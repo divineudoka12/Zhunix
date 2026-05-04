@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-de2a5f7a8e38e0fb4a64840ca4c156532a35eeba",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.4.3"
+  },
+  "userSourceNameMap": {
+    "contracts/AgentRegistry.sol": "project/contracts/AgentRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/AgentRegistry.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.19;\n\ninterface IERC7857 {\n    function ownerOf(uint256 tokenId) external view returns (address);\n    function isAuthorized(uint256 tokenId, address executor) external view returns (bool);\n}\n\ncontract AgentRegistry {\n\n    enum AgentStatus {\n        ACTIVE,\n        SUSPENDED,\n        REVOKED\n    }\n\n    struct Agent {\n        uint256 id;\n        address agentAddress;\n        address contributor;\n        uint256 agenticTokenId;\n        string metadataURI;\n        AgentStatus status;\n        uint256 totalPriceUpdates;\n        uint256 totalNegotiations;\n        uint256 registeredAt;\n        uint256 updatedAt;\n    }\n\n    address public owner;\n    uint256 private _nextAgentId;\n\n    IERC7857 public agenticIdContract;\n\n    mapping(uint256 => Agent) private _agents;\n    mapping(address => uint256) private _agentAddressToId;\n    mapping(address => uint256[]) private _contributorAgents;\n    // ERC-7857 tokenId, agentId to prevent duplicate token registration\n    mapping(uint256 => uint256) private _tokenIdToAgentId;\n\n    event AgentRegistered(\n        uint256 indexed agentId,\n        address indexed agentAddress,\n        address indexed contributor,\n        uint256 agenticTokenId\n    );\n\n    event AgentStatusUpdated(uint256 indexed agentId, AgentStatus newStatus);\n\n    event AgentActivityRecorded(uint256 indexed agentId, string activityType);\n\n    event AgenticIdContractUpdated(address newContract);\n\n    modifier onlyOwner() {\n        require(msg.sender == owner, \"AgentRegistry: not owner\");\n        _;\n    }\n\n    modifier onlyContributor(uint256 agentId) {\n        require(_agents[agentId].contributor == msg.sender, \"AgentRegistry: not contributor\");\n        _;\n    }\n\n    modifier agentExists(uint256 agentId) {\n        require(_agents[agentId].agentAddress != address(0), \"AgentRegistry: agent not found\");\n        _;\n    }\n\n    constructor(address agenticIdContractAddress) {\n        require(agenticIdContractAddress != address(0), \"AgentRegistry: zero address\");\n        owner = msg.sender;\n        _nextAgentId = 1;\n        agenticIdContract = IERC7857(agenticIdContractAddress);\n    }\n\n    function registerAgent(\n        address agentAddress,\n        uint256 agenticTokenId,\n        string calldata metadataURI\n    ) external returns (uint256 agentId) {\n        require(agentAddress != address(0), \"AgentRegistry: zero agent address\");\n        require(bytes(metadataURI).length > 0, \"AgentRegistry: empty metadata URI\");\n        require(_agentAddressToId[agentAddress] == 0, \"AgentRegistry: agent already registered\");\n        require(_tokenIdToAgentId[agenticTokenId] == 0, \"AgentRegistry: token already registered\");\n\n        require(\n            agenticIdContract.ownerOf(agenticTokenId) == msg.sender,\n            \"AgentRegistry: caller does not own this agentic ID\"\n        );\n\n        require(\n            agenticIdContract.isAuthorized(agenticTokenId, agentAddress),\n            \"AgentRegistry: agent wallet not authorized on agentic ID\"\n        );\n\n        agentId = _nextAgentId++;\n\n        _agents[agentId] = Agent({\n            id: agentId,\n            agentAddress: agentAddress,\n            contributor: msg.sender,\n            agenticTokenId: agenticTokenId,\n            metadataURI: metadataURI,\n            status: AgentStatus.ACTIVE,\n            totalPriceUpdates: 0,\n            totalNegotiations: 0,\n            registeredAt: block.timestamp,\n            updatedAt: block.timestamp\n        });\n\n        _agentAddressToId[agentAddress] = agentId;\n        _contributorAgents[msg.sender].push(agentId);\n        _tokenIdToAgentId[agenticTokenId] = agentId;\n\n        emit AgentRegistered(agentId, agentAddress, msg.sender, agenticTokenId);\n    }\n\n    // contributor suspends or revokes their own agent\n    function updateAgentStatus(\n        uint256 agentId,\n        AgentStatus newStatus\n    ) external onlyContributor(agentId) agentExists(agentId) {\n        _agents[agentId].status = newStatus;\n        _agents[agentId].updatedAt = block.timestamp;\n        emit AgentStatusUpdated(agentId, newStatus);\n    }\n\n    // platform can kill any compromised agent globally\n    function adminUpdateAgentStatus(\n        uint256 agentId,\n        AgentStatus newStatus\n    ) external onlyOwner agentExists(agentId) {\n        _agents[agentId].status = newStatus;\n        _agents[agentId].updatedAt = block.timestamp;\n        emit AgentStatusUpdated(agentId, newStatus);\n    }\n\n    // called by DataRegistry/Marketplace to log agent activity\n    function recordPriceUpdate(uint256 agentId) external onlyOwner agentExists(agentId) {\n        _agents[agentId].totalPriceUpdates += 1;\n        _agents[agentId].updatedAt = block.timestamp;\n        emit AgentActivityRecorded(agentId, \"PRICE_UPDATE\");\n    }\n\n    function recordNegotiation(uint256 agentId) external onlyOwner agentExists(agentId) {\n        _agents[agentId].totalNegotiations += 1;\n        _agents[agentId].updatedAt = block.timestamp;\n        emit AgentActivityRecorded(agentId, \"NEGOTIATION\");\n    }\n\n    function isAgentActive(address agentAddress) external view returns (bool) {\n        uint256 agentId = _agentAddressToId[agentAddress];\n        if (agentId == 0) return false;\n        return _agents[agentId].status == AgentStatus.ACTIVE;\n    }\n\n    // also checks ERC-7857 authorization is still valid live on chain\n    function isAgentFullyAuthorized(address agentAddress) external view returns (bool) {\n        uint256 agentId = _agentAddressToId[agentAddress];\n        if (agentId == 0) return false;\n        if (_agents[agentId].status != AgentStatus.ACTIVE) return false;\n\n        // re-check live ERC-7857 authorization - contributor may have revoked it\n        uint256 tokenId = _agents[agentId].agenticTokenId;\n        return agenticIdContract.isAuthorized(tokenId, agentAddress);\n    }\n\n    function getAgent(uint256 agentId)\n        external\n        view\n        agentExists(agentId)\n        returns (Agent memory)\n    {\n        return _agents[agentId];\n    }\n\n    function getAgentByAddress(address agentAddress) external view returns (Agent memory) {\n        uint256 agentId = _agentAddressToId[agentAddress];\n        require(agentId != 0, \"AgentRegistry: agent not found\");\n        return _agents[agentId];\n    }\n\n    function getAgentByTokenId(uint256 tokenId) external view returns (Agent memory) {\n        uint256 agentId = _tokenIdToAgentId[tokenId];\n        require(agentId != 0, \"AgentRegistry: no agent for this token\");\n        return _agents[agentId];\n    }\n\n    function getContributorAgents(address contributor) external view returns (uint256[] memory) {\n        return _contributorAgents[contributor];\n    }\n\n    function totalAgents() external view returns (uint256) {\n        return _nextAgentId - 1;\n    }\n\n    // update ERC-7857 contract address if 0G deploys a new version\n    function updateAgenticIdContract(address newContract) external onlyOwner {\n        require(newContract != address(0), \"AgentRegistry: zero address\");\n        agenticIdContract = IERC7857(newContract);\n        emit AgenticIdContractUpdated(newContract);\n    }\n\n    function transferOwnership(address newOwner) external onlyOwner {\n        require(newOwner != address(0), \"AgentRegistry: zero address\");\n        owner = newOwner;\n    }\n}\n"
+      }
+    }
+  }
+}

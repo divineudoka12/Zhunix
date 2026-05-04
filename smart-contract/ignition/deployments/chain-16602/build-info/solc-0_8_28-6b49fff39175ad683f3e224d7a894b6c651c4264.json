@@ -1,0 +1,49 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-6b49fff39175ad683f3e224d7a894b6c651c4264",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "compilerType": "solc",
+  "toolVersions": {
+    "hardhat": "3.4.3"
+  },
+  "userSourceNameMap": {
+    "contracts/DataRegistry.sol": "project/contracts/DataRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.linkReferences",
+            "evm.bytecode.object",
+            "evm.bytecode.opcodes",
+            "evm.bytecode.sourceMap",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.deployedBytecode.linkReferences",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.opcodes",
+            "evm.deployedBytecode.sourceMap",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/DataRegistry.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.19;\n\ncontract DataRegistry {\n\n    enum DataType {\n        TEXT,\n        CODE,\n        AUDIO,\n        VIDEO,\n        IMAGE,\n        BEHAVIORAL,\n        FINANCIAL,\n        DOMAIN\n    }\n\n    enum UsagePermission {\n        AI_TRAINING,\n        ANALYTICS,\n        BOTH\n    }\n\n    enum DatasetStatus {\n        ACTIVE,\n        PAUSED,\n        REMOVED\n    }\n\n    struct Dataset {\n        uint256 id;\n        address contributor;\n        address agentAddress;\n        string storageRootHash;\n        string metadataURI;\n        DataType dataType;\n        UsagePermission permission;\n        DatasetStatus status;\n        uint256 pricePerAccess;\n        uint256 subscriptionPrice;\n        uint256 totalSales;\n        uint256 totalRevenue;\n        uint256 registeredAt;\n        uint256 updatedAt;\n        bool agentPricingEnabled;\n    }\n\n    address public owner;\n    uint256 private _nextDatasetId;\n\n    mapping(uint256 => Dataset) private _datasets;\n    mapping(address => uint256[]) private _contributorDatasets;\n    mapping(string => uint256) private _hashToDatasetId;\n    mapping(uint256 => mapping(address => uint256)) private _subscriptions;\n\n    event DatasetRegistered(\n        uint256 indexed datasetId,\n        address indexed contributor,\n        DataType dataType,\n        string storageRootHash,\n        uint256 pricePerAccess\n    );\n\n    event DatasetUpdated(\n        uint256 indexed datasetId,\n        uint256 newPrice,\n        DatasetStatus newStatus\n    );\n\n    event AgentAssigned(uint256 indexed datasetId, address indexed agent);\n\n    event AgentPriceUpdated(\n        uint256 indexed datasetId,\n        uint256 newPrice,\n        address indexed agent\n    );\n\n    event SaleRecorded(uint256 indexed datasetId, address indexed buyer, uint256 amount);\n\n    event SubscriptionRecorded(\n        uint256 indexed datasetId,\n        address indexed buyer,\n        uint256 expiresAt\n    );\n\n    modifier onlyOwner() {\n        require(msg.sender == owner, \"DataRegistry: not owner\");\n        _;\n    }\n\n    modifier onlyContributor(uint256 datasetId) {\n        require(_datasets[datasetId].contributor == msg.sender, \"DataRegistry: not contributor\");\n        _;\n    }\n\n    modifier datasetExists(uint256 datasetId) {\n        require(_datasets[datasetId].contributor != address(0), \"DataRegistry: dataset not found\");\n        _;\n    }\n\n    constructor() {\n        owner = msg.sender;\n        _nextDatasetId = 1; // 0 means \"not found\" in hash lookups\n    }\n\n    function registerDataset(\n        string calldata storageRootHash,\n        string calldata metadataURI,\n        DataType dataType,\n        UsagePermission permission,\n        uint256 pricePerAccess,\n        uint256 subscriptionPrice,\n        address agentAddress,\n        bool agentPricingEnabled\n    ) external returns (uint256 datasetId) {\n        require(bytes(storageRootHash).length > 0, \"DataRegistry: empty root hash\");\n        require(bytes(metadataURI).length > 0, \"DataRegistry: empty metadata URI\");\n        require(pricePerAccess > 0, \"DataRegistry: price must be > 0\");\n        require(_hashToDatasetId[storageRootHash] == 0, \"DataRegistry: dataset already registered\");\n\n        datasetId = _nextDatasetId++;\n\n        _datasets[datasetId] = Dataset({\n            id: datasetId,\n            contributor: msg.sender,\n            agentAddress: agentAddress,\n            storageRootHash: storageRootHash,\n            metadataURI: metadataURI,\n            dataType: dataType,\n            permission: permission,\n            status: DatasetStatus.ACTIVE,\n            pricePerAccess: pricePerAccess,\n            subscriptionPrice: subscriptionPrice,\n            totalSales: 0,\n            totalRevenue: 0,\n            registeredAt: block.timestamp,\n            updatedAt: block.timestamp,\n            agentPricingEnabled: agentPricingEnabled\n        });\n\n        _contributorDatasets[msg.sender].push(datasetId);\n        _hashToDatasetId[storageRootHash] = datasetId;\n\n        emit DatasetRegistered(datasetId, msg.sender, dataType, storageRootHash, pricePerAccess);\n    }\n\n    function updateDataset(\n        uint256 datasetId,\n        uint256 newPrice,\n        uint256 newSubscriptionPrice,\n        DatasetStatus newStatus\n    ) external onlyContributor(datasetId) datasetExists(datasetId) {\n        require(newPrice > 0, \"DataRegistry: price must be > 0\");\n\n        Dataset storage ds = _datasets[datasetId];\n        ds.pricePerAccess = newPrice;\n        ds.subscriptionPrice = newSubscriptionPrice;\n        ds.status = newStatus;\n        ds.updatedAt = block.timestamp;\n\n        emit DatasetUpdated(datasetId, newPrice, newStatus);\n    }\n\n    function assignAgent(\n        uint256 datasetId,\n        address agentAddress,\n        bool agentPricingEnabled\n    ) external onlyContributor(datasetId) datasetExists(datasetId) {\n        Dataset storage ds = _datasets[datasetId];\n        ds.agentAddress = agentAddress;\n        ds.agentPricingEnabled = agentPricingEnabled;\n        ds.updatedAt = block.timestamp;\n\n        emit AgentAssigned(datasetId, agentAddress);\n    }\n\n    function agentUpdatePrice(\n        uint256 datasetId,\n        uint256 newPrice\n    ) external datasetExists(datasetId) {\n        Dataset storage ds = _datasets[datasetId];\n        require(ds.agentAddress == msg.sender, \"DataRegistry: not the agent\");\n        require(ds.agentPricingEnabled, \"DataRegistry: agent pricing disabled\");\n        require(newPrice > 0, \"DataRegistry: price must be > 0\");\n\n        ds.pricePerAccess = newPrice;\n        ds.updatedAt = block.timestamp;\n\n        emit AgentPriceUpdated(datasetId, newPrice, msg.sender);\n    }\n\n    // only callable by DataMarketplace (owner) after ownership transfer\n    function recordSale(\n        uint256 datasetId,\n        address buyer,\n        uint256 amount,\n        bool isSubscription\n    ) external onlyOwner datasetExists(datasetId) {\n        Dataset storage ds = _datasets[datasetId];\n        ds.totalSales += 1;\n        ds.totalRevenue += amount;\n        ds.updatedAt = block.timestamp;\n\n        if (isSubscription) {\n            uint256 expiresAt = block.timestamp + 30 days;\n            _subscriptions[datasetId][buyer] = expiresAt;\n            emit SubscriptionRecorded(datasetId, buyer, expiresAt);\n        } else {\n            emit SaleRecorded(datasetId, buyer, amount);\n        }\n    }\n\n    function getDataset(uint256 datasetId)\n        external\n        view\n        datasetExists(datasetId)\n        returns (Dataset memory)\n    {\n        return _datasets[datasetId];\n    }\n\n    function getContributorDatasets(address contributor)\n        external\n        view\n        returns (uint256[] memory)\n    {\n        return _contributorDatasets[contributor];\n    }\n\n    function getDatasetByHash(string calldata rootHash) external view returns (uint256) {\n        return _hashToDatasetId[rootHash];\n    }\n\n    function isSubscriptionActive(uint256 datasetId, address buyer) external view returns (bool) {\n        return _subscriptions[datasetId][buyer] > block.timestamp;\n    }\n\n    function getSubscriptionExpiry(uint256 datasetId, address buyer) external view returns (uint256) {\n        return _subscriptions[datasetId][buyer];\n    }\n\n    function totalDatasets() external view returns (uint256) {\n        return _nextDatasetId - 1;\n    }\n\n    function transferOwnership(address newOwner) external onlyOwner {\n        require(newOwner != address(0), \"DataRegistry: zero address\");\n        owner = newOwner;\n    }\n}\n"
+      }
+    }
+  }
+}

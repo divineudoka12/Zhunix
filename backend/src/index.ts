@@ -12,6 +12,7 @@ import uploadRoutes from "./routes/upload.routes";
 import datasetRoutes from "./routes/dataset.routes";
 import purchaseRoutes from "./routes/purchase.routes";
 import agentRoutes from "./routes/agent.routes";
+import validationRoutes from "./routes/validation.routes";
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/datasets", datasetRoutes);
 app.use("/api/purchases", purchaseRoutes);
 app.use("/api/agents", agentRoutes);
+app.use("/api/validation", validationRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

@@ -29,10 +29,26 @@ export enum AgentStatus {
   REVOKED = "REVOKED",
 }
 
+export enum ValidationStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
 export interface AuthRequest extends Request {
   user?: {
     address: string;
   };
+}
+
+export interface QualityAssessment {
+  overallScore: number;
+  completeness: number;
+  accuracy: number;
+  authenticity: number;
+  consistency: number;
+  recommendations: string[];
+  issues: string[];
 }
 
 export interface DatasetMetadata {

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { AuthRequest, DataType, UsagePermission, DatasetStatus } from "../types";
 import { Dataset } from "../models/dataset.model";
 import { registryService } from "../services/contracts/registry.service";
+import { validationService } from "../services/validation/validation.service";
 import { AppError } from "../middleware/error.middleware";
 
 export const registerDataset = async (
@@ -13,14 +14,20 @@ export const registerDataset = async (
     const {
       storageRootHash, metadataURI, name, description,
       dataType, permission, pricePerAccess, subscriptionPrice,
-      agentAddress, agentPricingEnabled, tags, samplePreview,
+      agentAddress, tags, samplePreview, fileSize, fileName,
     } = req.body;
+
+    // Agent address is now mandatory
+    if (!agentAddress) {
+      return next(new AppError("Agent address is mandatory for quality validation", 400));
+    }
 
     const existing = await Dataset.findOne({ storageRootHash });
     if (existing) {
       return next(new AppError("Dataset with this root hash already exists", 409));
     }
 
+    // Register on-chain with mandatory agent pricing enabled
     const { datasetId, txHash } = await registryService.registerDataset({
       storageRootHash,
       metadataURI,
@@ -28,10 +35,11 @@ export const registerDataset = async (
       permission,
       pricePerAccess,
       subscriptionPrice: subscriptionPrice || "0",
-      agentAddress: agentAddress || "",
-      agentPricingEnabled: agentPricingEnabled || false,
+      agentAddress,
+      agentPricingEnabled: true,
     });
 
+    // Create dataset with pending validation status
     const dataset = await Dataset.create({
       onChainId: datasetId,
       contributor: req.user!.address,
@@ -43,11 +51,41 @@ export const registerDataset = async (
       permission,
       pricePerAccess,
       subscriptionPrice: subscriptionPrice || "0",
-      agentAddress: agentAddress || "",
-      agentPricingEnabled: agentPricingEnabled || false,
+      agentAddress,
+      agentPricingEnabled: true,
       tags: tags || [],
       samplePreview: samplePreview || "",
     });
+
+    // Trigger async validation by quality agent
+    // This happens asynchronously to prevent blocking the registration
+    const fileSize = Number(fileSize) || 0;
+    const fileName = String(fileName) || storageRootHash;
+
+    validationService
+      .validateDataset(
+        datasetId,
+        storageRootHash,
+        dataType,
+        fileSize,
+        fileName,
+        description,
+        agentAddress
+      )
+      .catch((err) => {
+        console.error(`Validation failed for dataset ${datasetId}:`, err);
+      });
+
+    res.status(201).json({
+      success: true,
+      dataset,
+      txHash,
+      message: "Dataset registered. Quality validation in progress.",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
     res.status(201).json({ success: true, dataset, txHash });
   } catch (err) {

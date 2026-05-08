@@ -1,7 +1,7 @@
 import { Dataset } from "../../models/dataset.model";
 import { computeService } from "../compute/compute.service";
 import { registryService } from "../contracts/registry.service";
-import { DataType, PricingContext } from "../../types";
+import { DataType, PricingContext, ValidationStatus } from "../../types";
 
 const DEMAND_THRESHOLDS = { low: 5, medium: 20 };
 
@@ -15,7 +15,13 @@ class AgentService {
   async runPricingCycle(datasetId: number): Promise<void> {
     const dataset = await Dataset.findOne({ onChainId: datasetId });
 
-    if (!dataset || !dataset.agentPricingEnabled || !dataset.agentAddress) {
+    // Only allow pricing for validated datasets
+    if (
+      !dataset ||
+      !dataset.agentPricingEnabled ||
+      !dataset.agentAddress ||
+      dataset.validationStatus !== ValidationStatus.APPROVED
+    ) {
       return;
     }
 
@@ -46,7 +52,11 @@ class AgentService {
   }
 
   async runAllAgentCycles(): Promise<void> {
-    const agentDatasets = await Dataset.find({ agentPricingEnabled: true });
+    // Only run pricing for validated and approved datasets
+    const agentDatasets = await Dataset.find({
+      agentPricingEnabled: true,
+      validationStatus: ValidationStatus.APPROVED,
+    });
 
     await Promise.allSettled(
       agentDatasets.map((ds) => this.runPricingCycle(ds.onChainId))

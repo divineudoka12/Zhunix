@@ -21,10 +21,12 @@ const registerSchema = z.object({
   permission: z.nativeEnum(UsagePermission),
   pricePerAccess: z.string().min(1),
   subscriptionPrice: z.string().optional(),
-  agentAddress: z.string().optional(),
+  agentAddress: z.string().min(1),
   agentPricingEnabled: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   samplePreview: z.string().optional(),
+  fileSize: z.number().optional(),
+  fileName: z.string().optional(),
 });
 
 const updateSchema = z.object({

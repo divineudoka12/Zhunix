@@ -10,6 +10,12 @@ Local development:
 http://localhost:5000
 ```
 
+Deployed backend:
+
+```text
+https://zhunix.vercel.app
+```
+
 All API routes except health are prefixed with:
 
 ```text

@@ -1,65 +1,128 @@
-import Image from "next/image";
+import Link from 'next/link';
+import styles from './page.module.css';
 
-export default function Home() {
+const stats = [
+  { value: '0G', label: 'Storage Layer' },
+  { value: 'TEE', label: 'Privacy Stack' },
+  { value: 'EVM', label: 'On-Chain Logic' },
+  { value: 'AI', label: 'Quality Scoring' },
+];
+
+const features = [
+  {
+    icon: '◈',
+    title: 'Privacy-Preserving Storage',
+    desc: 'Files stored on 0G Labs with cryptographic root hashes. Your data is yours.',
+  },
+  {
+    icon: '◉',
+    title: 'AI-Powered Validation',
+    desc: 'Agents score completeness, accuracy, authenticity and consistency before listing.',
+  },
+  {
+    icon: '◇',
+    title: 'On-Chain Purchases',
+    desc: 'Every transaction is indexed on-chain. Transparent provenance, zero intermediaries.',
+  },
+  {
+    icon: '◆',
+    title: 'Agent Marketplace',
+    desc: 'Register validator agents, trigger dynamic pricing cycles, earn agentic token rewards.',
+  },
+];
+
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className={styles.page}>
+      {/* Background grid */}
+      <div className={styles.grid} />
+
+      {/* Hero */}
+      <section className={styles.hero}>
+        <div className={styles.heroInner}>
+          <div className={styles.tag}>
+            <span className={styles.tagDot} />
+            Privacy-Preserving Data Marketplace
+          </div>
+          <h1 className={styles.heroTitle} style={{opacity: 1, transform: 'none'}}>
+            Trade Data.
+            <br />
+            <span className={styles.heroAccent}>Trust Nothing</span>
+            <br />
+            Verify Everything.
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className={styles.heroSub} style={{opacity: 1, transform: 'none'}}>
+            Zhunix is a decentralized marketplace where contributors list datasets with cryptographic
+            integrity and buyers access them through on-chain smart contracts — with zero trust assumptions.
           </p>
+          <div className={styles.heroCta} style={{opacity: 1, transform: 'none'}}>
+            <Link href="/marketplace" className="btn btn-primary">
+              Explore Marketplace →
+            </Link>
+            <Link href="/upload" className="btn btn-ghost">
+              List a Dataset
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Decorative terminal */}
+       <div className={styles.terminal} style={{opacity: 1, transform: 'none'}}>
+          <div className={styles.terminalBar}>
+            <span className={styles.termDot} style={{ background: '#ff5f57' }} />
+            <span className={styles.termDot} style={{ background: '#febc2e' }} />
+            <span className={styles.termDot} style={{ background: '#28c840' }} />
+            <span className={styles.termTitle}>zhunix.log</span>
+          </div>
+          <div className={styles.terminalBody}>
+            <div className={styles.termLine}><span className={styles.termPrompt}>$</span> Dataset uploaded → 0G storage</div>
+            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> Root hash: 0x4f9a...c821</div>
+            <div className={styles.termLine}><span className={styles.termPrompt}>$</span> Validation triggered</div>
+            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> Quality score: <span className={styles.termRed}>87</span>/100</div>
+            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> Status: APPROVED</div>
+            <div className={styles.termLine}><span className={styles.termPrompt}>$</span> Listed on marketplace</div>
+            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> txHash: 0x71bc...98fa</div>
+            <div className={styles.termLine}><span className={styles.termCursor}>█</span></div>
+          </div>
         </div>
-      </main>
+      </section>
+
+      {/* Stats bar */}
+      <section className={styles.statsBar}>
+        {stats.map((s) => (
+          <div key={s.label} className={styles.statItem}>
+            <div className="stat-number">{s.value}</div>
+            <div className="stat-label">{s.label}</div>
+          </div>
+        ))}
+      </section>
+
+      {/* Features */}
+      <section className={styles.features}>
+        <div className={styles.featuresInner}>
+          <div className="section-title">How it works</div>
+          <h2 className={styles.featuresTitle}>Built for trustless data exchange</h2>
+          <div className={styles.featuresGrid}>
+            {features.map((f) => (
+              <div key={f.title} className={`card card-red-hover ${styles.featureCard}`}>
+                <div className={styles.featureIcon}>{f.icon}</div>
+                <h3 className={styles.featureTitle}>{f.title}</h3>
+                <p className={styles.featureDesc}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className={styles.ctaSection}>
+        <div className={styles.ctaInner}>
+          <h2 className={styles.ctaTitle}>Ready to contribute?</h2>
+          <p className={styles.ctaSub}>List your dataset in minutes. Earn on every access.</p>
+          <Link href="/upload" className="btn btn-primary">
+            Start Uploading
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,0 +1,48 @@
+.page { max-width: 1280px; margin: 0 auto; padding: 48px 24px; }
+.header { margin-bottom: 40px; display: flex; flex-direction: column; gap: 8px; }
+.title { font-size: clamp(28px,3vw,40px); font-weight: 800; letter-spacing: -0.02em; }
+
+.statsGrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 48px; }
+@media (max-width: 768px) { .statsGrid { grid-template-columns: repeat(2,1fr); } }
+
+.statCard { padding: 24px; display: flex; flex-direction: column; gap: 6px; }
+
+.section { margin-bottom: 48px; }
+.sectionHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+
+.empty { padding: 32px; text-align: center; color: var(--text-secondary); font-size: 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+
+.tableWrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.table td {
+  padding: 14px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: var(--bg-card-hover); }
+
+.dsName { color: var(--text-primary) !important; font-weight: 600; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.viewLink { color: var(--red); font-size: 13px; font-weight: 600; }
+.viewLink:hover { text-decoration: underline; }
+
+.loading { display: flex; align-items: center; justify-content: center; height: 50vh; color: var(--text-secondary); font-family: var(--font-mono); }
+
+.connectWall { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; height: 60vh; text-align: center; }
+.connectIcon { font-size: 48px; color: var(--text-muted); }
+.connectWall h2 { font-size: 24px; font-weight: 700; }
+.connectWall p { color: var(--text-secondary); font-size: 15px; }

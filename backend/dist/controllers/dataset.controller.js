@@ -8,7 +8,7 @@ const validation_service_1 = require("../services/validation/validation.service"
 const error_middleware_1 = require("../middleware/error.middleware");
 const registerDataset = async (req, res, next) => {
     try {
-        const { storageRootHash, metadataURI, name, description, dataType, permission, pricePerAccess, subscriptionPrice, agentAddress, tags, samplePreview, fileSize, fileName, } = req.body;
+        const { storageRootHash, metadataURI, name, description, dataType, permission, pricePerAccess, subscriptionPrice, agentAddress, tags, samplePreview, fileSize: rawFileSize, fileName: rawFileName, } = req.body;
         // Agent address is now mandatory
         if (!agentAddress) {
             return next(new error_middleware_1.AppError("Agent address is mandatory for quality validation", 400));
@@ -47,8 +47,8 @@ const registerDataset = async (req, res, next) => {
         });
         // Trigger async validation by quality agent
         // This happens asynchronously to prevent blocking the registration
-        const fileSize = Number(fileSize) || 0;
-        const fileName = String(fileName) || storageRootHash;
+        const fileSize = Number(rawFileSize) || 0;
+        const fileName = String(rawFileName || storageRootHash);
         validation_service_1.validationService
             .validateDataset(datasetId, storageRootHash, dataType, fileSize, fileName, description, agentAddress)
             .catch((err) => {
@@ -66,12 +66,6 @@ const registerDataset = async (req, res, next) => {
     }
 };
 exports.registerDataset = registerDataset;
-res.status(201).json({ success: true, dataset, txHash });
-try { }
-catch (err) {
-    next(err);
-}
-;
 const getDatasets = async (req, res, next) => {
     try {
         const { dataType, permission, status, contributor, page = "1", limit = "20", tags, } = req.query;

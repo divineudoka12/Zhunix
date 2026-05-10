@@ -7,7 +7,7 @@ This guide explains how the frontend should interact with the Zhunix backend. Th
 Local development:
 
 ```text
-http://localhost:5000
+https://zhunix.vercel.app
 ```
 
 All API routes except health are prefixed with:

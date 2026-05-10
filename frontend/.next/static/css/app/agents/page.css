@@ -1,0 +1,45 @@
+/*!**********************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[5].use[3]!./app/agents/page.module.css ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************/
+.page_page__4dYHh { max-width: 700px; margin: 0 auto; padding: 48px 24px; }
+.page_header__KfXfX { margin-bottom: 40px; }
+.page_title___SyUS { font-size: clamp(28px,3vw,40px); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+.page_sub__Rr_I8 { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+.page_tabs__z0XSO { display: flex; gap: 4px; margin-bottom: 32px; border-bottom: 1px solid var(--border); }
+.page_tab__7wUMO { padding: 10px 20px; font-size: 13px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+.page_tab__7wUMO:hover { color: var(--text-primary); }
+.page_tabActive__Aov02 { color: var(--red); border-bottom-color: var(--red); }
+
+.page_content__sul5m {}
+.page_errorBox__L7z4k { padding: 12px 16px; background: rgba(232,25,44,0.08); border: 1px solid rgba(232,25,44,0.2); border-radius: 4px; font-size: 14px; color: var(--red); margin-bottom: 20px; }
+.page_successBox__jujkE { padding: 12px 16px; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 4px; font-size: 14px; color: var(--success); margin-bottom: 20px; font-family: var(--font-mono); word-break: break-all; }
+
+.page_form__w4dZr { display: flex; flex-direction: column; gap: 18px; }
+.page_field__u5aqI { display: flex; flex-direction: column; }
+.page_searchRow__N02FS { display: flex; gap: 12px; align-items: center; }
+
+.page_txBox__ezhGn { padding: 10px 14px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; word-break: break-all; }
+
+/* Agent card */
+.page_agentCard__A24Cm { padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.page_agentHeader__TSMB_ { display: flex; align-items: center; gap: 16px; }
+.page_agentIcon__iUeUV { font-size: 32px; color: var(--red); }
+.page_agentAddress__sr9ag { font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; word-break: break-all; }
+
+.page_agentStats__xh_rb { display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 12px; gap: 12px; padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.page_agentStat__7SSyv { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.page_statNum__veVz6 { font-family: var(--font-mono); font-size: 24px; font-weight: 500; color: var(--text-primary); }
+.page_statLbl__LiEYm { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
+
+.page_agentMeta__LXnPx { display: flex; flex-direction: column; gap: 10px; }
+.page_metaRow__teufa { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.page_metaRow__teufa:last-child { border-bottom: none; }
+.page_metaKey__tlNBX { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.page_metaVal__cTNOo { font-size: 13px; color: var(--text-secondary); font-family: var(--font-mono); }
+
+.page_connectWall__wjawG { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; height: 60vh; text-align: center; }
+.page_connectIcon__p2d_D { font-size: 48px; color: var(--text-muted); }
+.page_connectWall__wjawG h2 { font-size: 24px; font-weight: 700; }
+.page_connectWall__wjawG p { color: var(--text-secondary); font-size: 15px; }
+

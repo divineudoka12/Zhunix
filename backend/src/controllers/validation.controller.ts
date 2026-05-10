@@ -12,9 +12,9 @@ export const getValidation = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { datasetId } = req.params;
+    const datasetId = Number(req.params.datasetId);
 
-    const validation = await validationService.getValidationHistory(Number(datasetId));
+    const validation = await validationService.getValidationHistory(datasetId);
 
     if (!validation) {
       return next(new AppError("Dataset not found", 404));
@@ -61,7 +61,7 @@ export const triggerValidation = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { datasetId } = req.params;
+    const datasetId = Number(req.params.datasetId);
     const { agentAddress, fileSize, fileName, description, dataType } = req.body;
 
     if (!agentAddress) {
@@ -77,7 +77,7 @@ export const triggerValidation = async (
     }
 
     const result = await validationService.validateDataset(
-      Number(datasetId),
+      datasetId,
       dataset.storageRootHash,
       dataType || dataset.dataType,
       Number(fileSize) || 0,

@@ -14,7 +14,7 @@ export const registerDataset = async (
     const {
       storageRootHash, metadataURI, name, description,
       dataType, permission, pricePerAccess, subscriptionPrice,
-      agentAddress, tags, samplePreview, fileSize, fileName,
+      agentAddress, tags, samplePreview, fileSize: rawFileSize, fileName: rawFileName,
     } = req.body;
 
     // Agent address is now mandatory
@@ -59,8 +59,8 @@ export const registerDataset = async (
 
     // Trigger async validation by quality agent
     // This happens asynchronously to prevent blocking the registration
-    const fileSize = Number(fileSize) || 0;
-    const fileName = String(fileName) || storageRootHash;
+    const fileSize = Number(rawFileSize) || 0;
+    const fileName = String(rawFileName || storageRootHash);
 
     validationService
       .validateDataset(
@@ -82,12 +82,6 @@ export const registerDataset = async (
       txHash,
       message: "Dataset registered. Quality validation in progress.",
     });
-  } catch (err) {
-    next(err);
-  }
-};
-
-    res.status(201).json({ success: true, dataset, txHash });
   } catch (err) {
     next(err);
   }

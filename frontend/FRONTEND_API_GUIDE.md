@@ -1,6 +1,6 @@
 # Zhunix Frontend API Guide
 
-This document describes how the frontend should integrate with the current Zhunix backend API.
+This guide explains how the frontend should interact with the Zhunix backend. The current backend is agent-centered: datasets are not just uploaded and listed, they are assigned to validator/pricing agents that affect validation, marketplace readiness, and price updates.
 
 ## Base URL
 
@@ -10,7 +10,7 @@ Local development:
 http://localhost:5000
 ```
 
-All API routes, except health check, are prefixed with:
+All API routes except health are prefixed with:
 
 ```text
 /api
@@ -22,18 +22,18 @@ Health check:
 GET /health
 ```
 
-Success response:
+Response:
 
 ```json
 {
   "status": "ok",
-  "timestamp": "2026-05-08T12:00:00.000Z"
+  "timestamp": "2026-05-10T12:00:00.000Z"
 }
 ```
 
-## Response Conventions
+## Response Format
 
-Successful API responses generally include:
+Successful responses generally include:
 
 ```json
 {
@@ -50,7 +50,7 @@ Error responses generally include:
 }
 ```
 
-Validation errors include field-level errors:
+Validation errors include field-level details:
 
 ```json
 {
@@ -62,19 +62,36 @@ Validation errors include field-level errors:
 }
 ```
 
+## Core Marketplace Flow
+
+The frontend should treat agents as part of the marketplace lifecycle, not as an optional add-on.
+
+1. User connects wallet and signs in with SIWE.
+2. Contributor registers or selects an agent.
+3. Contributor uploads a dataset file with an agent address and data type.
+4. Contributor registers the dataset metadata with the storage root hash and the same agent address.
+5. Backend registers the dataset on-chain with agent pricing enabled.
+6. Backend creates a MongoDB dataset record with `validationStatus: "PENDING"`.
+7. Backend asynchronously asks the assigned validation agent to assess quality.
+8. Dataset becomes `APPROVED` or `REJECTED` based on quality score.
+9. Approved datasets can participate in agent pricing cycles.
+10. Buyers purchase access on-chain; backend exposes indexed purchase/access state.
+
+Frontend implication: marketplace cards should show both normal dataset data and agent/validation data: `agentAddress`, `agentPricingEnabled`, `validationStatus`, `qualityScore`, and price fields.
+
 ## Authentication
 
 The backend uses SIWE wallet authentication and returns a JWT.
 
-Authenticated requests must include:
+Protected endpoints require:
 
 ```http
 Authorization: Bearer <token>
 ```
 
-The token payload identifies the connected wallet address. Store the token on the frontend after signature verification and attach it to protected endpoints.
+Store the JWT after SIWE verification and attach it to all protected calls.
 
-### 1. Get SIWE Nonce
+### Get SIWE Nonce
 
 ```http
 GET /api/auth/nonce/:address
@@ -86,7 +103,7 @@ Example:
 GET /api/auth/nonce/0x1234...
 ```
 
-Success response:
+Response:
 
 ```json
 {
@@ -95,21 +112,14 @@ Success response:
 }
 ```
 
-Frontend use:
-
-- Request a nonce for the connected wallet address.
-- Build a SIWE message with that nonce.
-- Ask the wallet to sign the SIWE message.
-- Send the message and signature to `/api/auth/verify`.
-
-### 2. Verify SIWE Signature
+### Verify SIWE Signature
 
 ```http
 POST /api/auth/verify
 Content-Type: application/json
 ```
 
-Request body:
+Body:
 
 ```json
 {
@@ -118,7 +128,7 @@ Request body:
 }
 ```
 
-Success response:
+Response:
 
 ```json
 {
@@ -128,17 +138,9 @@ Success response:
 }
 ```
 
-Possible errors:
+## Shared Enums
 
-- `401 Invalid signature`
-- `401 Invalid or expired nonce`
-- `400 Validation failed`
-
-## Enums
-
-Use these exact string values in frontend forms and API requests.
-
-### DataType
+Use these exact string values in forms, filters, and API requests.
 
 ```ts
 type DataType =
@@ -150,40 +152,132 @@ type DataType =
   | "BEHAVIORAL"
   | "FINANCIAL"
   | "DOMAIN";
-```
 
-### UsagePermission
-
-```ts
 type UsagePermission = "AI_TRAINING" | "ANALYTICS" | "BOTH";
-```
 
-### DatasetStatus
-
-```ts
 type DatasetStatus = "ACTIVE" | "PAUSED" | "REMOVED";
-```
 
-### AgentStatus
-
-```ts
 type AgentStatus = "ACTIVE" | "SUSPENDED" | "REVOKED";
-```
 
-### ValidationStatus
-
-```ts
 type ValidationStatus = "PENDING" | "APPROVED" | "REJECTED";
 ```
 
-## Upload Flow
+## Agents
 
-The frontend dataset creation flow should be split into two backend calls:
+Agents are registered on-chain and stored in MongoDB. A dataset requires an `agentAddress` during upload and registration. That assigned agent is used for quality validation and agent-driven pricing.
 
-1. Upload the file to storage with `/api/upload`.
-2. Register the dataset metadata and returned root hash with `/api/datasets`.
+### Agent Shape
 
-The backend requires an agent address for both upload and registration because validation is tied to a validator agent.
+```ts
+interface Agent {
+  _id: string;
+  onChainAgentId: number;
+  agentAddress: string;
+  contributor: string;
+  agenticTokenId: number;
+  metadataURI: string;
+  status: AgentStatus;
+  totalPriceUpdates: number;
+  totalNegotiations: number;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### Register Agent
+
+Protected route.
+
+```http
+POST /api/agents
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "agentAddress": "0xagent...",
+  "agenticTokenId": 1,
+  "metadataURI": "https://example.com/agent.json"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "agent": {},
+  "txHash": "0xtransaction..."
+}
+```
+
+Possible errors:
+
+- `401 Unauthorized`
+- `409 Agent already registered`
+
+### Get Agent By Address
+
+Public route.
+
+```http
+GET /api/agents/:address
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "agent": {}
+}
+```
+
+Use this before dataset creation if the UI lets users paste/select an agent. If the agent is missing, prompt the contributor to register it first.
+
+### Trigger Agent Pricing Cycle
+
+Protected route.
+
+```http
+POST /api/agents/:datasetId/price-cycle
+Authorization: Bearer <token>
+```
+
+`:datasetId` is the on-chain dataset id.
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Pricing cycle triggered"
+}
+```
+
+Backend behavior:
+
+- Only runs if the dataset exists.
+- Only runs if `agentPricingEnabled` is true.
+- Only runs if an `agentAddress` is assigned.
+- Only runs if `validationStatus` is `APPROVED`.
+- Uses the compute service to recommend a new ETH price.
+- Calls the registry contract's agent price update function.
+- Updates `dataset.pricePerAccess` in MongoDB.
+
+Frontend note: this endpoint returns success even if no price changed. Refresh the dataset after calling it.
+
+## Upload And Dataset Registration
+
+Dataset creation is a two-step process.
+
+1. Upload file to storage with `/api/upload`.
+2. Register dataset metadata with `/api/datasets`.
+
+Use the same `agentAddress`, `dataType`, file name, and file size across the flow so validation has useful context.
 
 ### Upload Dataset File
 
@@ -200,11 +294,11 @@ Form fields:
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `file` | File | Yes | Max size is 500 MB. |
-| `agentAddress` | string | Yes | Validator agent address. |
+| `agentAddress` | string | Yes | Validator/pricing agent address. |
 | `dataType` | DataType | Yes | Dataset type. |
-| `description` | string | No | Accepted by controller but not currently used by upload response. |
+| `description` | string | No | Accepted by upload controller. |
 
-Success response:
+Response:
 
 ```json
 {
@@ -225,11 +319,70 @@ Possible errors:
 - `400 Data type is required`
 - `401 Unauthorized`
 
+### Register Dataset
+
+Protected route.
+
+```http
+POST /api/datasets
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "storageRootHash": "<root hash from upload>",
+  "metadataURI": "https://example.com/metadata.json",
+  "name": "Dataset name",
+  "description": "Dataset description",
+  "dataType": "TEXT",
+  "permission": "AI_TRAINING",
+  "pricePerAccess": "0.01",
+  "subscriptionPrice": "0.1",
+  "agentAddress": "0xagent...",
+  "tags": ["finance", "news"],
+  "samplePreview": "Optional short preview",
+  "fileSize": 123456,
+  "fileName": "dataset.csv"
+}
+```
+
+Important pricing note: the backend passes `pricePerAccess` and `subscriptionPrice` through `ethers.parseEther`, so send ETH-denominated strings like `"0.01"`, not wei strings.
+
+Backend behavior:
+
+- `agentAddress` is mandatory.
+- `agentPricingEnabled` is forced to `true`.
+- Dataset is registered on-chain.
+- Dataset is saved in MongoDB.
+- Validation is triggered asynchronously.
+- Response returns before validation finishes.
+
+Response:
+
+```json
+{
+  "success": true,
+  "dataset": {},
+  "txHash": "0xtransaction...",
+  "message": "Dataset registered. Quality validation in progress."
+}
+```
+
+Possible errors:
+
+- `400 Agent address is mandatory for quality validation`
+- `400 Validation failed`
+- `401 Unauthorized`
+- `409 Dataset with this root hash already exists`
+
+Frontend recommendation: after successful registration, navigate to the dataset detail page and poll `/api/validation/:datasetId` until the status changes from `PENDING`.
+
 ## Datasets
 
 ### Dataset Shape
-
-Dataset objects returned by the API include these main fields:
 
 ```ts
 interface Dataset {
@@ -294,7 +447,7 @@ Example:
 GET /api/datasets?dataType=TEXT&tags=finance,news&page=1&limit=12
 ```
 
-Success response:
+Response:
 
 ```json
 {
@@ -317,9 +470,9 @@ Public route.
 GET /api/datasets/:id
 ```
 
-Important: `:id` is the on-chain dataset id, not MongoDB `_id`.
+`:id` is the on-chain dataset id, not MongoDB `_id`.
 
-Success response:
+Response:
 
 ```json
 {
@@ -327,66 +480,6 @@ Success response:
   "dataset": {}
 }
 ```
-
-Possible errors:
-
-- `404 Dataset not found`
-
-### Register Dataset
-
-Protected route.
-
-```http
-POST /api/datasets
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-Request body:
-
-```json
-{
-  "storageRootHash": "<root hash from upload>",
-  "metadataURI": "https://example.com/metadata.json",
-  "name": "Dataset name",
-  "description": "Dataset description",
-  "dataType": "TEXT",
-  "permission": "AI_TRAINING",
-  "pricePerAccess": "1000000000000000000",
-  "subscriptionPrice": "10000000000000000000",
-  "agentAddress": "0xagent...",
-  "agentPricingEnabled": true,
-  "tags": ["finance", "news"],
-  "samplePreview": "Optional short preview"
-}
-```
-
-Frontend notes:
-
-- `agentAddress` is required by the controller, even though the route schema currently marks it optional.
-- `agentPricingEnabled` is forced to `true` by the backend.
-- `pricePerAccess` and `subscriptionPrice` are strings, suitable for wei-like values.
-- `metadataURI` must be a valid URL.
-- After registration, the backend triggers async validation and returns immediately.
-- The controller reads `fileSize` and `fileName` from the request body for validation, but the route schema currently does not allow those fields through. See backend blockers below.
-
-Success response:
-
-```json
-{
-  "success": true,
-  "dataset": {},
-  "txHash": "0xtransaction...",
-  "message": "Dataset registered. Quality validation in progress."
-}
-```
-
-Possible errors:
-
-- `400 Agent address is mandatory for quality validation`
-- `400 Validation failed`
-- `401 Unauthorized`
-- `409 Dataset with this root hash already exists`
 
 ### Update Dataset
 
@@ -398,19 +491,19 @@ Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-Important: `:id` is the on-chain dataset id.
+`:id` is the on-chain dataset id.
 
-Request body:
+Body:
 
 ```json
 {
-  "pricePerAccess": "1200000000000000000",
-  "subscriptionPrice": "12000000000000000000",
+  "pricePerAccess": "0.012",
+  "subscriptionPrice": "0.12",
   "status": "ACTIVE"
 }
 ```
 
-Success response:
+Response:
 
 ```json
 {
@@ -427,7 +520,7 @@ Possible errors:
 
 ## Validation
 
-Validation checks dataset quality with an assigned validation agent. A score of `60` or higher is approved; below `60` is rejected.
+Validation is performed by the assigned validation agent after dataset registration. A score of `60` or higher is approved; below `60` is rejected.
 
 ### Get Dataset Validation
 
@@ -437,9 +530,9 @@ Public route.
 GET /api/validation/:datasetId
 ```
 
-Important: `:datasetId` is the on-chain dataset id.
+`:datasetId` is the on-chain dataset id.
 
-Success response:
+Response:
 
 ```json
 {
@@ -468,19 +561,13 @@ Possible errors:
 
 ### Get Pending Validations
 
-Public in current code, though comments say admin/agent.
+Public in current code.
 
 ```http
 GET /api/validation/pending/list?limit=50
 ```
 
-Query parameters:
-
-| Query | Type | Required | Default | Max |
-| --- | --- | --- | --- | --- |
-| `limit` | number | No | `50` | `100` |
-
-Success response:
+Response:
 
 ```json
 {
@@ -490,7 +577,7 @@ Success response:
 }
 ```
 
-### Trigger Validation
+### Trigger Validation Manually
 
 Protected route.
 
@@ -500,7 +587,7 @@ Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-Request body:
+Body:
 
 ```json
 {
@@ -512,9 +599,9 @@ Request body:
 }
 ```
 
-Only `agentAddress` is required. Other fields fall back to the stored dataset.
+Only `agentAddress` is required. Other values fall back to the stored dataset.
 
-Success response:
+Response:
 
 ```json
 {
@@ -535,110 +622,9 @@ Success response:
 }
 ```
 
-Possible errors:
+## Marketplace And Purchases
 
-- `400 Agent address is required`
-- `401 Unauthorized`
-- `404 Dataset not found`
-
-## Agents
-
-### Agent Shape
-
-```ts
-interface Agent {
-  _id: string;
-  onChainAgentId: number;
-  agentAddress: string;
-  contributor: string;
-  agenticTokenId: number;
-  metadataURI: string;
-  status: AgentStatus;
-  totalPriceUpdates: number;
-  totalNegotiations: number;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-### Register Agent
-
-Protected route.
-
-```http
-POST /api/agents
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-Request body:
-
-```json
-{
-  "agentAddress": "0xagent...",
-  "agenticTokenId": 1,
-  "metadataURI": "https://example.com/agent.json"
-}
-```
-
-Success response:
-
-```json
-{
-  "success": true,
-  "agent": {},
-  "txHash": "0xtransaction..."
-}
-```
-
-Possible errors:
-
-- `400 Validation failed`
-- `401 Unauthorized`
-- `409 Agent already registered`
-
-### Get Agent By Address
-
-Public route.
-
-```http
-GET /api/agents/:address
-```
-
-Success response:
-
-```json
-{
-  "success": true,
-  "agent": {}
-}
-```
-
-Possible errors:
-
-- `404 Agent not found`
-
-### Trigger Agent Pricing Cycle
-
-Protected route.
-
-```http
-POST /api/agents/:datasetId/price-cycle
-Authorization: Bearer <token>
-```
-
-Success response:
-
-```json
-{
-  "success": true,
-  "message": "Pricing cycle triggered"
-}
-```
-
-## Purchases
-
-Purchase records are indexed from on-chain marketplace events. The current backend exposes read/access routes, but no direct purchase creation endpoint.
+The backend does not expose a direct REST endpoint to create purchases. Purchase transactions should happen on-chain from the frontend or another wallet flow. The backend exposes indexed purchase history, access checks, and pending balances.
 
 ### Purchase Shape
 
@@ -669,7 +655,7 @@ GET /api/purchases
 Authorization: Bearer <token>
 ```
 
-Success response:
+Response:
 
 ```json
 {
@@ -687,9 +673,9 @@ GET /api/purchases/:id
 Authorization: Bearer <token>
 ```
 
-Important: `:id` is the on-chain purchase id.
+`:id` is the on-chain purchase id.
 
-Success response:
+Response:
 
 ```json
 {
@@ -713,7 +699,7 @@ GET /api/purchases/access/:datasetId
 Authorization: Bearer <token>
 ```
 
-Success response:
+Response:
 
 ```json
 {
@@ -722,6 +708,8 @@ Success response:
   "datasetId": 1
 }
 ```
+
+Use this on dataset detail pages after wallet login to decide whether to show locked, purchase, or access UI.
 
 ### Get Pending Balance
 
@@ -732,7 +720,7 @@ GET /api/purchases/balance
 Authorization: Bearer <token>
 ```
 
-Success response:
+Response:
 
 ```json
 {
@@ -748,45 +736,55 @@ Success response:
 - Connect wallet.
 - Request nonce with `/api/auth/nonce/:address`.
 - Sign SIWE message.
-- Verify signature with `/api/auth/verify`.
+- Verify with `/api/auth/verify`.
 - Store JWT and wallet address.
-- Add `Authorization: Bearer <token>` to protected requests.
+- Attach `Authorization: Bearer <token>` to protected requests.
 
-### Dataset Marketplace
+### Agent Directory
 
-- Use `/api/datasets` for listing and filters.
-- Use `dataType`, `permission`, `status`, `tags`, `page`, and `limit` query params.
-- Show `qualityScore`, `validationStatus`, price fields, tags, and contributor.
-- Use `/api/datasets/:id` for details.
-- Use `/api/purchases/access/:datasetId` to gate protected dataset actions after wallet login.
+- Let contributors register agents with `/api/agents`.
+- Let users look up agents with `/api/agents/:address`.
+- Show agent status, agentic token id, owner/contributor, and marketplace activity fields.
 
-### Dataset Upload/Register
+### Dataset Upload Wizard
 
-- Step 1: collect file, data type, description, validator agent address.
-- Step 2: call `/api/upload` with multipart form data.
-- Step 3: collect metadata URL, name, permission, pricing, tags, sample preview.
-- Step 4: call `/api/datasets` with the upload `rootHash`.
-- Step 5: poll `/api/validation/:datasetId` until status is no longer `PENDING`.
+- Step 1: choose or register an agent.
+- Step 2: collect file, data type, and description.
+- Step 3: upload with `/api/upload`.
+- Step 4: collect metadata URI, title, permission, price, tags, and preview.
+- Step 5: register with `/api/datasets`.
+- Step 6: poll `/api/validation/:datasetId`.
 
-### Agent Management
+### Marketplace Listing
 
-- Register agents with `/api/agents`.
-- Look up agent profiles with `/api/agents/:address`.
-- Trigger dataset-specific pricing cycles with `/api/agents/:datasetId/price-cycle`.
+- List with `/api/datasets`.
+- Show `validationStatus`, `qualityScore`, `agentAddress`, `pricePerAccess`, and `subscriptionPrice`.
+- Treat `PENDING` and `REJECTED` as not fully marketplace-ready unless the product intentionally displays them.
+- Use `/api/purchases/access/:datasetId` after login to gate buyer actions.
+
+### Dataset Detail
+
+- Fetch `/api/datasets/:id`.
+- Fetch `/api/validation/:datasetId`.
+- Fetch `/api/agents/:agentAddress`.
+- If logged in, fetch `/api/purchases/access/:datasetId`.
+- Contributors can update price/status with `PUT /api/datasets/:id`.
+- Contributors can trigger agent pricing with `POST /api/agents/:datasetId/price-cycle`.
 
 ### Purchases
 
-- Display current user's purchase history from `/api/purchases`.
-- Display pending balance from `/api/purchases/balance`.
-- Do blockchain purchase transactions on the frontend or another service, then rely on backend indexing to expose purchase records.
+- Read purchase history from `/api/purchases`.
+- Check a specific purchase with `/api/purchases/:id`.
+- Show contributor balance from `/api/purchases/balance`.
+- Execute purchase transactions through the marketplace contract from the frontend wallet flow, then rely on backend indexing for records and access checks.
 
-## Backend Blockers To Confirm Before Frontend Integration
+## Frontend Implementation Notes
 
-These issues were found while preparing this guide and may block frontend testing:
-
-1. `src/controllers/dataset.controller.ts` has an extra duplicate response/catch block around line 91. `npm run build` reports TypeScript syntax errors there.
-2. `src/routes/validation.routes.ts` imports `authMiddleware`, but `src/middleware/auth.middleware.ts` exports `authenticate`. The protected validation trigger route should likely use `authenticate`.
-3. `POST /api/datasets` reads `fileSize` and `fileName` for async validation, but the Zod route schema does not include those fields. They will be stripped from `req.body` by validation unless added to the schema.
-4. `POST /api/datasets` route schema currently marks `agentAddress` optional, but the controller requires it. Frontend should treat it as required.
-5. `GET /api/validation/pending/list` is public in current code, even though comments say admin/agent only.
-6. `npm run build` also hit sandbox write permission errors against `dist` in this environment, so a clean local build should be run outside the sandbox after the syntax issues are fixed.
+- Use on-chain ids for dataset and purchase route params.
+- Use MongoDB `_id` only for display/debugging unless a specific UI needs it.
+- Normalize wallet addresses to lowercase when comparing locally.
+- Send ETH string prices like `"0.01"` because the backend uses `ethers.parseEther`.
+- Keep `agentAddress` required in dataset forms.
+- Poll validation status after registration because validation is async.
+- Refresh dataset details after a pricing cycle because the endpoint does not return the updated dataset.
+- Keep marketplace UI aware of validation state; an uploaded dataset is not necessarily approved yet.

@@ -58,7 +58,7 @@ Provide strict but fair scoring. Overall score = average of 4 metrics.
 Be realistic about ${dataType} datasets specifically.`;
 
     try {
-      const response = await this.client.messages.create({
+      const response = await this.client.chat.completions.create({
         model: this.model,
         max_tokens: 1024,
         messages: [
@@ -69,13 +69,10 @@ Be realistic about ${dataType} datasets specifically.`;
         ],
       });
 
-      const content = response.content[0];
-      if (content.type !== "text") {
-        throw new Error("Unexpected response type from validator");
-      }
+      const content = response.choices[0]?.message?.content;
 
       // Parse JSON response
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = content?.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error("Could not extract JSON from validator response");
       }
@@ -98,7 +95,7 @@ Be realistic about ${dataType} datasets specifically.`;
   private validateAssessmentStructure(assessment: QualityAssessment): void {
     const metrics = ["overallScore", "completeness", "accuracy", "authenticity", "consistency"];
     for (const metric of metrics) {
-      const value = (assessment as Record<string, unknown>)[metric];
+      const value = (assessment as unknown as Record<string, unknown>)[metric];
       if (typeof value !== "number" || value < 0 || value > 100) {
         throw new Error(`Invalid ${metric}: must be between 0-100`);
       }

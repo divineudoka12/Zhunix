@@ -270,7 +270,7 @@ Backend behavior:
 - Only runs if `agentPricingEnabled` is true.
 - Only runs if an `agentAddress` is assigned.
 - Only runs if `validationStatus` is `APPROVED`.
-- Uses the compute service to recommend a new ETH price.
+- Uses the compute service to recommend a new 0G price.
 - Calls the registry contract's agent price update function.
 - Updates `dataset.pricePerAccess` in MongoDB.
 
@@ -355,7 +355,7 @@ Body:
 }
 ```
 
-Important pricing note: the backend passes `pricePerAccess` and `subscriptionPrice` through `ethers.parseEther`, so send ETH-denominated strings like `"0.01"`, not wei strings.
+Important pricing note: the backend passes `pricePerAccess` and `subscriptionPrice` through `ethers.parseEther`, so send 0G-denominated strings like `"0.01"`, not wei strings.
 
 Backend behavior:
 
@@ -789,7 +789,7 @@ Response:
 - Use on-chain ids for dataset and purchase route params.
 - Use MongoDB `_id` only for display/debugging unless a specific UI needs it.
 - Normalize wallet addresses to lowercase when comparing locally.
-- Send ETH string prices like `"0.01"` because the backend uses `ethers.parseEther`.
+- Send 0G string prices like `"0.01"` because the backend uses `ethers.parseEther`.
 - Keep `agentAddress` required in dataset forms.
 - Poll validation status after registration because validation is async.
 - Refresh dataset details after a pricing cycle because the endpoint does not return the updated dataset.

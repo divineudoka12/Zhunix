@@ -32,11 +32,19 @@ class IndexerService {
     this.marketplaceProvider = marketplaceService.getProvider();
   }
 
-  private async handleDatasetRegistered(log: ethers.Log): Promise<void> {
-    const parsed = registryService.getContractInterface().parseLog(log);
-    if (!parsed) return;
+  private getEventTransactionHash(event: unknown): string {
+    if (typeof event === "object" && event && "log" in event) {
+      const log = (event as { log?: { transactionHash?: string } }).log;
+      return log?.transactionHash || "";
+    }
+    if (typeof event === "object" && event && "transactionHash" in event) {
+      return String((event as { transactionHash?: string }).transactionHash || "");
+    }
+    return "";
+  }
 
-    const datasetId = Number(parsed.args[0]);
+  private async handleDatasetRegistered(datasetIdValue: ethers.BigNumberish): Promise<void> {
+    const datasetId = Number(datasetIdValue);
     const onChainData = await registryService.getDataset(datasetId);
 
     await Dataset.findOneAndUpdate(
@@ -54,17 +62,18 @@ class IndexerService {
         agentAddress: onChainData[2],
         agentPricingEnabled: onChainData[14],
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
   }
 
-  private async handleDatasetUpdated(log: ethers.Log): Promise<void> {
-    const parsed = registryService.getContractInterface().parseLog(log);
-    if (!parsed) return;
-
-    const datasetId = Number(parsed.args[0]);
-    const newPrice = ethers.formatEther(parsed.args[1]);
-    const newStatus = STATUS_MAP[Number(parsed.args[2])];
+  private async handleDatasetUpdated(
+    datasetIdValue: ethers.BigNumberish,
+    newPriceValue: ethers.BigNumberish,
+    statusValue: ethers.BigNumberish
+  ): Promise<void> {
+    const datasetId = Number(datasetIdValue);
+    const newPrice = ethers.formatEther(newPriceValue);
+    const newStatus = STATUS_MAP[Number(statusValue)];
 
     await Dataset.findOneAndUpdate(
       { onChainId: datasetId },
@@ -72,15 +81,18 @@ class IndexerService {
     );
   }
 
-  private async handlePurchaseCreated(log: ethers.Log): Promise<void> {
-    const parsed = marketplaceService.getContractInterface().parseLog(log);
-    if (!parsed) return;
-
-    const purchaseId = Number(parsed.args[0]);
-    const datasetId = Number(parsed.args[1]);
-    const buyer = parsed.args[2].toLowerCase();
-    const amount = ethers.formatEther(parsed.args[3]);
-    const isSubscription = parsed.args[4];
+  private async handlePurchaseCreated(
+    purchaseIdValue: ethers.BigNumberish,
+    datasetIdValue: ethers.BigNumberish,
+    buyerValue: string,
+    amountValue: ethers.BigNumberish,
+    isSubscription: boolean,
+    event: unknown
+  ): Promise<void> {
+    const purchaseId = Number(purchaseIdValue);
+    const datasetId = Number(datasetIdValue);
+    const buyer = buyerValue.toLowerCase();
+    const amount = ethers.formatEther(amountValue);
 
     const onChainPurchase = await marketplaceService.getPurchase(purchaseId);
     const contributor = onChainPurchase[3].toLowerCase();
@@ -98,9 +110,9 @@ class IndexerService {
         platformFee,
         contributorPayout,
         isSubscription,
-        txHash: log.transactionHash,
+        txHash: this.getEventTransactionHash(event),
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     // update dataset sales stats in MongoDB
@@ -110,12 +122,12 @@ class IndexerService {
     );
   }
 
-  private async handleAgentPriceUpdated(log: ethers.Log): Promise<void> {
-    const parsed = registryService.getContractInterface().parseLog(log);
-    if (!parsed) return;
-
-    const datasetId = Number(parsed.args[0]);
-    const newPrice = ethers.formatEther(parsed.args[1]);
+  private async handleAgentPriceUpdated(
+    datasetIdValue: ethers.BigNumberish,
+    newPriceValue: ethers.BigNumberish
+  ): Promise<void> {
+    const datasetId = Number(datasetIdValue);
+    const newPrice = ethers.formatEther(newPriceValue);
 
     await Dataset.findOneAndUpdate(
       { onChainId: datasetId },
@@ -136,20 +148,20 @@ class IndexerService {
       this.marketplaceProvider
     );
 
-    registryContract.on("DatasetRegistered", (_id, _contributor, _type, _hash, _price, log) =>
-      this.handleDatasetRegistered(log).catch(console.error)
+    registryContract.on("DatasetRegistered", (id) =>
+      this.handleDatasetRegistered(id).catch(console.error)
     );
 
-    registryContract.on("DatasetUpdated", (_id, _price, _status, log) =>
-      this.handleDatasetUpdated(log).catch(console.error)
+    registryContract.on("DatasetUpdated", (id, price, status) =>
+      this.handleDatasetUpdated(id, price, status).catch(console.error)
     );
 
-    registryContract.on("AgentPriceUpdated", (_id, _price, _agent, log) =>
-      this.handleAgentPriceUpdated(log).catch(console.error)
+    registryContract.on("AgentPriceUpdated", (id, price) =>
+      this.handleAgentPriceUpdated(id, price).catch(console.error)
     );
 
-    marketplaceContract.on("PurchaseCreated", (_pid, _did, _buyer, _amount, _isSub, log) =>
-      this.handlePurchaseCreated(log).catch(console.error)
+    marketplaceContract.on("PurchaseCreated", (purchaseId, datasetId, buyer, amount, isSubscription, event) =>
+      this.handlePurchaseCreated(purchaseId, datasetId, buyer, amount, isSubscription, event).catch(console.error)
     );
 
     console.log("Indexer listening for on-chain events");

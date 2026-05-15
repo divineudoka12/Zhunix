@@ -21,6 +21,8 @@ export const errorHandler = (
 
   if (process.env.NODE_ENV === "development") {
     console.error(err);
+  } else if (err instanceof AppError) {
+    console.warn(`[api] ${statusCode}: ${message}`);
   }
 
   res.status(statusCode).json({

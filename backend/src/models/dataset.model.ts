@@ -17,6 +17,10 @@ export interface IDataset extends Document {
   agentPricingEnabled: boolean;
   tags: string[];
   samplePreview: string;
+  privacyMode: string;
+  storageSubmissionUrl: string;
+  storageTxSeq: number | null;
+  licenseMetadata: Record<string, unknown>;
   qualityScore: number;
   totalSales: number;
   totalRevenue: string;
@@ -52,6 +56,10 @@ const DatasetSchema = new Schema<IDataset>(
     agentPricingEnabled: { type: Boolean, default: true },
     tags: [{ type: String }],
     samplePreview: { type: String, default: "" },
+    privacyMode: { type: String, default: "Encrypted File" },
+    storageSubmissionUrl: { type: String, default: "" },
+    storageTxSeq: { type: Number, default: null },
+    licenseMetadata: { type: Schema.Types.Mixed, default: {} },
     qualityScore: { type: Number, default: 0, min: 0, max: 100 },
     totalSales: { type: Number, default: 0 },
     totalRevenue: { type: String, default: "0" },

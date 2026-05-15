@@ -4,17 +4,19 @@ import { AuthProvider } from '@/lib/auth-context';
 import Navbar from '@/components/ui/Navbar';
 
 export const metadata: Metadata = {
-  title: 'Zhunix — Privacy-Preserving Data Marketplace',
-  description: 'Buy, sell, and validate datasets with on-chain transparency and AI-powered quality scoring.',
+  title: 'Zhunix - AI Data Licensing Protocol',
+  description: 'Create consent-first data licenses managed by autonomous agents and settled on-chain.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="noise-overlay">
+      <body>
         <AuthProvider>
-          <Navbar />
-          <main>{children}</main>
+          <div className="app-shell">
+            <Navbar />
+            {children}
+          </div>
         </AuthProvider>
       </body>
     </html>

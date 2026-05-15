@@ -1,161 +1,336 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { datasets, Dataset, DataType, UsagePermission, truncateAddress, formatWei } from '@/lib/api';
-import styles from './page.module.css';
+import { Bot, CheckCircle, Database, Filter, Loader2, Plus, Search, ShoppingCart, Sparkles, X } from 'lucide-react';
+import { Dataset, DataType, MarketplaceScoutResponse, UsagePermission, contractActions, datasets, formatWei, getExplorerTxUrl, truncateAddress } from '@/lib/api';
+import { Badge, PageFrame, QualityBar, badgeColor, permissionLabel, typeMeta } from '@/components/ui/kit';
 
-const DATA_TYPES: DataType[] = ['TEXT', 'CODE', 'AUDIO', 'VIDEO', 'IMAGE', 'BEHAVIORAL', 'FINANCIAL', 'DOMAIN'];
-const PERMISSIONS: UsagePermission[] = ['AI_TRAINING', 'ANALYTICS', 'BOTH'];
-
-function ScoreMeter({ score }: { score: number }) {
-  const color = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#e8192c';
-  return (
-    <div className={styles.score}>
-      <div className={styles.scoreMeter}>
-        <div className={styles.scoreFill} style={{ width: `${score}%`, background: color }} />
-      </div>
-      <span style={{ color, fontFamily: 'var(--font-mono)', fontSize: '12px' }}>{score}</span>
-    </div>
-  );
-}
+const DATA_TYPES: Array<'All' | DataType> = ['All', 'TEXT', 'CODE', 'AUDIO', 'VIDEO', 'IMAGE', 'BEHAVIORAL', 'FINANCIAL', 'DOMAIN'];
+const PERMISSIONS: Array<'All' | UsagePermission> = ['All', 'AI_TRAINING', 'ANALYTICS', 'BOTH'];
+const MARKETPLACE_MIN_QUALITY_SCORE = 65;
 
 function DatasetCard({ ds }: { ds: Dataset }) {
+  const meta = typeMeta(ds.dataType);
   return (
-    <Link href={`/dataset/${ds.onChainId}`} className={`card card-red-hover ${styles.card}`}>
-      <div className={styles.cardTop}>
-        <span className={`badge badge-type`}>{ds.dataType}</span>
-        <span className={`badge badge-${ds.validationStatus.toLowerCase()}`}>{ds.validationStatus}</span>
-      </div>
-      <h3 className={styles.cardName}>{ds.name}</h3>
-      <p className={styles.cardDesc}>{ds.description?.slice(0, 100)}{ds.description?.length > 100 ? '...' : ''}</p>
-
-      <div className={styles.cardMeta}>
-        <div className={styles.cardMetaItem}>
-          <span className={styles.metaLabel}>Quality</span>
-          <ScoreMeter score={ds.qualityScore} />
+    <Link href={`/dataset/${ds.onChainId}`} className="card card-pad" style={{ display: 'block', borderColor: ds.validationStatus === 'APPROVED' ? 'rgba(34,197,94,0.18)' : 'var(--border)' }}>
+      <div style={{ display: 'flex', gap: 11, marginBottom: 14 }}>
+        <div style={{ width: 42, height: 42, borderRadius: 10, background: `${meta.color}22`, display: 'grid', placeItems: 'center', color: meta.color, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+          {meta.icon}
         </div>
-        <div className={styles.cardMetaItem}>
-          <span className={styles.metaLabel}>Access</span>
-          <span className={styles.metaValue}>{formatWei(ds.pricePerAccess)}</span>
-        </div>
-        <div className={styles.cardMetaItem}>
-          <span className={styles.metaLabel}>Sales</span>
-          <span className={styles.metaValue}>{ds.totalSales}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2 style={{ color: 'var(--text)', fontSize: 14, fontWeight: 700, lineHeight: 1.35, marginBottom: 7 }}>{ds.name}</h2>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <Badge color={badgeColor(ds.dataType)}>{meta.label}</Badge>
+            <Badge color={badgeColor(ds.permission)}>{permissionLabel(ds.permission)}</Badge>
+            <Badge color={badgeColor(ds.validationStatus)}>{ds.validationStatus}</Badge>
+          </div>
         </div>
       </div>
 
-      {ds.tags?.length > 0 && (
-        <div className={styles.tags}>
-          {ds.tags.slice(0, 4).map(t => (
-            <span key={t} className={styles.tag}>{t}</span>
-          ))}
-        </div>
-      )}
+      <p style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.55, minHeight: 39, marginBottom: 14 }}>
+        {(ds.description || 'No description provided.').slice(0, 118)}
+        {(ds.description || '').length > 118 ? '...' : ''}
+      </p>
 
-      <div className={styles.cardFooter}>
-        <span className="address">{truncateAddress(ds.contributor)}</span>
-        <span className={`badge badge-${ds.status.toLowerCase()}`}>{ds.status}</span>
+      <QualityBar label="Quality Score" score={ds.qualityScore || 0} />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 13, marginTop: 14, borderTop: '1px solid var(--border)' }}>
+        <div>
+          <span style={{ color: 'var(--text)', fontSize: 17, fontWeight: 800 }}>{formatWei(ds.pricePerAccess)}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}> / access</span>
+        </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+          {ds.totalSales ? (
+            <>
+              {ds.totalSales} sales / <span style={{ color: 'var(--green)' }}>{formatWei(ds.totalRevenue)}</span>
+            </>
+          ) : (
+            <span style={{ color: 'var(--text-faint)' }}>No sales yet</span>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Bot size={12} color="var(--text-muted)" />
+        <span className="mono" style={{ color: 'var(--text-faint)', fontSize: 11 }}>{truncateAddress(ds.agentAddress || ds.validatorAgent)}</span>
       </div>
     </Link>
   );
 }
 
+function MarketplaceScout({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState('');
+  const [budget, setBudget] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<MarketplaceScoutResponse | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkError, setBulkError] = useState('');
+  const [bulkTxHash, setBulkTxHash] = useState('');
+
+  const runScout = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await datasets.scout({
+        prompt,
+        budget: budget ? Number(budget) : undefined,
+        limit: 10,
+      });
+      setResult(res);
+      setBulkError('');
+      setBulkTxHash('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Marketplace scout failed.');
+      setResult(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const bulkPurchase = async () => {
+    if (!result?.results.length) return;
+    setBulkLoading(true);
+    setBulkError('');
+    setBulkTxHash('');
+    try {
+      const res = await contractActions.bulkPurchase(result.results.map(({ dataset }) => ({
+        datasetId: dataset.onChainId,
+        pricePerAccess: dataset.pricePerAccess,
+      })));
+      setBulkTxHash(res.txHash);
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : 'Bulk purchase failed.');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(3,6,12,0.78)', backdropFilter: 'blur(10px)', display: 'grid', placeItems: 'center', padding: 18 }}>
+      <section className="card card-pad" style={{ width: 'min(920px, 100%)', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,0.4)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 18 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--accent-light)', fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
+              <Sparkles size={15} /> MARKETPLACE SCOUT AGENT
+            </div>
+            <h2 style={{ color: 'var(--text)', fontSize: 20, letterSpacing: 0 }}>Prompt the scout to find buyer-ready data</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.55, marginTop: 6 }}>The scout only returns approved marketplace data with a quality score of {MARKETPLACE_MIN_QUALITY_SCORE} or higher.</p>
+          </div>
+          <button className="icon-button" aria-label="Close marketplace scout" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="grid grid-2" style={{ alignItems: 'end', marginBottom: 14 }}>
+          <div>
+            <label className="label">Buyer prompt</label>
+            <textarea
+              className="textarea"
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              placeholder="Describe the exact data your company wants."
+              style={{ minHeight: 104 }}
+            />
+          </div>
+          <div>
+            <label className="label">Budget in 0G <Badge color="gray">Optional</Badge></label>
+            <input
+              className="input"
+              value={budget}
+              onChange={(event) => setBudget(event.target.value)}
+              inputMode="decimal"
+              placeholder="Example: 1.5"
+              style={{ marginBottom: 12 }}
+            />
+            <button className="btn btn-primary" onClick={runScout} disabled={loading || prompt.trim().length < 3} style={{ width: '100%', minHeight: 44 }}>
+              {loading ? <Loader2 size={16} className="spin" /> : <Bot size={16} />}
+              {loading ? 'Scouting marketplace...' : 'Scout Data Matches'}
+            </button>
+          </div>
+        </div>
+
+        {error && <div className="alert alert-red" style={{ marginBottom: 14 }}>{error}</div>}
+
+        {result && (
+          <div>
+            <div className="alert alert-blue" style={{ marginBottom: 14 }}>
+              <CheckCircle size={15} color="var(--green)" />
+              <span>
+                <strong style={{ color: 'var(--text)' }}>{result.agent.name}</strong> found {result.count} matches above {result.minimumQualityScore}/100.
+                {result.interpretedIntent?.dataTypes?.length ? (
+                  <span style={{ display: 'block', marginTop: 4, color: 'var(--text)' }}>
+                    Searching only: {result.interpretedIntent.dataTypes.map((item) => typeMeta(item).label).join(', ')}
+                  </span>
+                ) : null}
+                <span className="mono" style={{ display: 'block', marginTop: 4 }}>Estimated one-time access total: {result.estimatedTotal} 0G</span>
+              </span>
+            </div>
+
+            {result.results.length === 0 ? (
+              <div className="card card-pad" style={{ textAlign: 'center' }}>
+                <Database size={30} color="var(--text-faint)" style={{ marginBottom: 10 }} />
+                <div style={{ color: 'var(--text)', fontWeight: 800, marginBottom: 6 }}>No matching data found</div>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.55, marginBottom: 14 }}>
+                  The scout did not find approved {MARKETPLACE_MIN_QUALITY_SCORE}+ score data for that exact category and prompt.
+                </p>
+                {(result.suggestions || []).length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    {(result.suggestions || []).map((suggestion) => (
+                      <Badge key={suggestion.dataType} color={badgeColor(suggestion.dataType)}>
+                        Try {typeMeta(suggestion.dataType).label}: {suggestion.count} available
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="card" style={{ padding: 14, marginBottom: 12, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 800 }}>Scout Basket</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 3 }}>{result.results.length} datasets / estimated {result.estimatedTotal} 0G</div>
+                  </div>
+                  <button className="btn btn-primary" onClick={bulkPurchase} disabled={bulkLoading}>
+                    {bulkLoading ? <Loader2 size={15} className="spin" /> : <ShoppingCart size={15} />}
+                    {bulkLoading ? 'Confirming basket...' : 'Pay For All Matches'}
+                  </button>
+                </div>
+                {bulkTxHash && (
+                  <a className="alert alert-green mono" href={getExplorerTxUrl(bulkTxHash)} target="_blank" rel="noreferrer" style={{ marginBottom: 12, textDecoration: 'none', wordBreak: 'break-all' }}>
+                    Bulk purchase confirmed: {truncateAddress(bulkTxHash)}
+                  </a>
+                )}
+                {bulkError && <div className="alert alert-red" style={{ marginBottom: 12 }}>{bulkError}</div>}
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {result.results.map(({ dataset, relevanceScore, matchReasons }) => (
+                    <div key={dataset._id} className="card" style={{ padding: 14, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, alignItems: 'center' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginBottom: 8 }}>
+                          <Badge color="green">{dataset.qualityScore}/100 quality</Badge>
+                          <Badge color="blue">{relevanceScore}/100 match</Badge>
+                          <Badge color={badgeColor(dataset.dataType)}>{typeMeta(dataset.dataType).label}</Badge>
+                        </div>
+                        <Link href={`/dataset/${dataset.onChainId}`} style={{ color: 'var(--text)', fontWeight: 800, fontSize: 14 }}>{dataset.name}</Link>
+                        <p style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.55, marginTop: 5 }}>{dataset.description.slice(0, 150)}{dataset.description.length > 150 ? '...' : ''}</p>
+                        <div style={{ color: 'var(--text-faint)', fontSize: 11.5, marginTop: 7 }}>{matchReasons.join(' / ')}</div>
+                      </div>
+                      <div style={{ display: 'grid', gap: 8, minWidth: 150 }}>
+                        <div style={{ color: 'var(--green)', fontSize: 15, fontWeight: 900, textAlign: 'right' }}>{formatWei(dataset.pricePerAccess)}</div>
+                        <Link href={`/dataset/${dataset.onChainId}`} className="btn btn-secondary" style={{ minHeight: 34, padding: '0 12px' }}>Review Single</Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export default function MarketplacePage() {
-  const [data, setData] = useState<Dataset[]>([]);
-  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
+  const [items, setItems] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ dataType: '', permission: '', page: '1' });
+  const [query, setQuery] = useState('');
+  const [dataType, setDataType] = useState<'All' | DataType>('All');
+  const [permission, setPermission] = useState<'All' | UsagePermission>('All');
+  const [total, setTotal] = useState(0);
+  const [scoutOpen, setScoutOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = { page: filters.page, limit: '12' };
-      if (filters.dataType) params.dataType = filters.dataType;
-      if (filters.permission) params.permission = filters.permission;
+      const params: Record<string, string> = { limit: '50', validationStatus: 'APPROVED', minQualityScore: String(MARKETPLACE_MIN_QUALITY_SCORE) };
+      if (dataType !== 'All') params.dataType = dataType;
+      if (permission !== 'All') params.permission = permission;
       const res = await datasets.list(params);
-      setData(res.datasets);
-      setPagination(res.pagination);
-    } catch (e) {
-      console.error(e);
+      setItems(res.datasets || []);
+      setTotal(res.pagination.total || 0);
+    } catch (error) {
+      console.error(error);
+      setItems([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [dataType, permission]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return items;
+    return items.filter((item) => [item.name, item.description, item.dataType, item.permission, ...(item.tags || [])].join(' ').toLowerCase().includes(term));
+  }, [items, query]);
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <div className="section-title">Browse</div>
-          <h1 className={styles.title}>Data Marketplace</h1>
-          <p className={styles.sub}>{pagination.total} datasets available</p>
-        </div>
-      </div>
+    <PageFrame title="Marketplace" subtitle="Browse verified data licenses for research, analytics, AI workflows, and business intelligence.">
+      <MarketplaceScout open={scoutOpen} onClose={() => setScoutOpen(false)} />
 
-      {/* Filters */}
-      <div className={styles.filters}>
-        <select
-          className="input"
-          style={{ width: 'auto', minWidth: '160px' }}
-          value={filters.dataType}
-          onChange={e => setFilters(f => ({ ...f, dataType: e.target.value, page: '1' }))}
-        >
-          <option value="">All Types</option>
-          {DATA_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select
-          className="input"
-          style={{ width: 'auto', minWidth: '160px' }}
-          value={filters.permission}
-          onChange={e => setFilters(f => ({ ...f, permission: e.target.value, page: '1' }))}
-        >
-          <option value="">All Permissions</option>
-          {PERMISSIONS.map(p => <option key={p} value={p}>{p.replace('_', ' ')}</option>)}
-        </select>
-        <button className="btn btn-ghost" onClick={() => setFilters({ dataType: '', permission: '', page: '1' })}>
-          Clear
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 9, padding: '0 14px', minHeight: 40 }}>
+          <Search size={14} color="var(--text-muted)" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search data licenses, types, tags..." style={{ background: 'transparent', border: 0, outline: 0, color: 'var(--text)', fontSize: 13.5, flex: 1 }} />
+        </div>
+        <button className="btn btn-primary" onClick={() => setScoutOpen(true)} title={`Ask the marketplace scout to find approved ${MARKETPLACE_MIN_QUALITY_SCORE}+ score data`}>
+          <Sparkles size={14} /> AI Scout
+        </button>
+        <button className="btn btn-secondary">
+          <Filter size={14} /> Filters
         </button>
       </div>
 
-      {/* Grid */}
-      {loading ? (
-        <div className={styles.loadingGrid}>
-          {Array(6).fill(0).map((_, i) => (
-            <div key={i} className={`card ${styles.skeleton}`} />
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 22 }}>
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="section-kicker">Type</span>
+          {DATA_TYPES.map((type) => (
+            <button key={type} onClick={() => setDataType(type)} className="btn" style={{ minHeight: 28, padding: '0 12px', borderRadius: 999, background: dataType === type ? 'rgba(59,124,246,0.14)' : 'transparent', borderColor: dataType === type ? 'var(--accent)' : 'var(--border)', color: dataType === type ? 'var(--accent-light)' : 'var(--text-muted)', fontSize: 12 }}>
+              {type === 'All' ? 'All' : typeMeta(type).label}
+            </button>
           ))}
         </div>
-      ) : data.length === 0 ? (
-        <div className={styles.empty}>
-          <div className={styles.emptyIcon}>◈</div>
-          <p>No datasets found</p>
-          <Link href="/upload" className="btn btn-primary">Upload the first one</Link>
+        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span className="section-kicker">Usage</span>
+          {PERMISSIONS.map((item) => (
+            <button key={item} onClick={() => setPermission(item)} className="btn" style={{ minHeight: 28, padding: '0 12px', borderRadius: 999, background: permission === item ? 'rgba(6,182,212,0.12)' : 'transparent', borderColor: permission === item ? 'var(--cyan)' : 'var(--border)', color: permission === item ? 'var(--cyan)' : 'var(--text-muted)', fontSize: 12 }}>
+              {item === 'All' ? 'All' : permissionLabel(item)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ color: 'var(--text-muted)', fontSize: 12, marginBottom: 16 }}>{filtered.length} of {total} data licenses shown</div>
+
+      {loading ? (
+        <div className="loading-state">Loading marketplace...</div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state card">
+          <Database size={36} color="var(--text-faint)" />
+          <div style={{ color: 'var(--text)', fontWeight: 700 }}>No licenses found</div>
+          <div>Be the first to create a data license in this category.</div>
+          <Link href="/upload" className="btn btn-primary">
+            <Plus size={15} /> Create Data License
+          </Link>
         </div>
       ) : (
-        <div className={styles.grid}>
-          {data.map(ds => <DatasetCard key={ds._id} ds={ds} />)}
+        <div className="grid grid-2">
+          {filtered.map((item) => <DatasetCard key={item._id} ds={item} />)}
         </div>
       )}
-
-      {/* Pagination */}
-      {pagination.pages > 1 && (
-        <div className={styles.pagination}>
-          <button
-            className="btn btn-ghost"
-            disabled={filters.page === '1'}
-            onClick={() => setFilters(f => ({ ...f, page: String(+f.page - 1) }))}
-          >← Prev</button>
-          <span className={styles.pageInfo}>
-            Page {pagination.page} of {pagination.pages}
-          </span>
-          <button
-            className="btn btn-ghost"
-            disabled={+filters.page >= pagination.pages}
-            onClick={() => setFilters(f => ({ ...f, page: String(+f.page + 1) }))}
-          >Next →</button>
-        </div>
-      )}
-    </div>
+    </PageFrame>
   );
 }

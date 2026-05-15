@@ -14,3 +14,5 @@
 # Logs
 *.log
 npm-debug.log*
+backend-dev.err.log*
+backend-dev.err.log*

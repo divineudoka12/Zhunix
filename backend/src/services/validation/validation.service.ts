@@ -27,7 +27,7 @@ class ValidationService {
     agentAddress: string
   ): Promise<QualityAssessment> {
     const prompt = `You are a rigorous data quality validation agent for DataVault, a decentralized AI training data marketplace.
-Your role is to validate data authenticity, quality, and compliance before it's published.
+Your role is to validate data authenticity, quality, buyer usefulness, and compliance before it's published.
 
 DATASET INFORMATION:
 - Storage Hash: ${storageRootHash}
@@ -42,6 +42,7 @@ VALIDATION CRITERIA (score 0-100 for each):
 2. ACCURACY: Are the data values correct and precise? (data inconsistencies, measurement errors, data type mismatches)
 3. AUTHENTICITY: Is the data genuine and not synthetic/fabricated? (real-world viability, realistic patterns)
 4. CONSISTENCY: Is the data internally consistent and non-contradictory? (format issues, duplicate records, conflicting values)
+5. VALUE: Is this data valuable enough for a real company to license? Reject junk, empty, placeholder, adult/nude/pornographic, unsafe, or non-consensual data.
 
 RESPONSE FORMAT (JSON):
 {
@@ -50,11 +51,15 @@ RESPONSE FORMAT (JSON):
   "accuracy": <number 0-100>,
   "authenticity": <number 0-100>,
   "consistency": <number 0-100>,
+  "valueScore": <number 0-100>,
+  "complianceRisk": "LOW" | "MEDIUM" | "HIGH",
+  "rejectionReasons": [<policy or value reasons that should block listing>],
   "issues": [<critical issues found>],
   "recommendations": [<suggestions for improvement>]
 }
 
 Provide strict but fair scoring. Overall score = average of 4 metrics.
+If the dataset appears pornographic, nude, explicit, illegal, unsafe, empty, junk, or not valuable to buyers, set complianceRisk to HIGH and include rejectionReasons.
 Be realistic about ${dataType} datasets specifically.`;
 
     try {
@@ -132,11 +137,13 @@ Be realistic about ${dataType} datasets specifically.`;
       agentAddress
     );
 
-    // Determine if dataset is approved or rejected based on overall score
-    // Threshold: 60% minimum quality score for approval
-    const APPROVAL_THRESHOLD = 60;
+    // Buyers should only receive useful data. Anything below 65 or with
+    // high compliance/value risk remains rejected and hidden from marketplace scouting.
+    const APPROVAL_THRESHOLD = 65;
+    const complianceRisk = assessment.complianceRisk || "LOW";
+    const rejectionReasons = assessment.rejectionReasons || [];
     const validationStatus =
-      assessment.overallScore >= APPROVAL_THRESHOLD
+      assessment.overallScore >= APPROVAL_THRESHOLD && complianceRisk !== "HIGH" && rejectionReasons.length === 0
         ? ValidationStatus.APPROVED
         : ValidationStatus.REJECTED;
 
@@ -153,11 +160,11 @@ Be realistic about ${dataType} datasets specifically.`;
           accuracy: assessment.accuracy,
           authenticity: assessment.authenticity,
           consistency: assessment.consistency,
-          issues: assessment.issues,
+          issues: [...assessment.issues, ...rejectionReasons],
           recommendations: assessment.recommendations,
         },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!dataset) {

@@ -1,52 +1,54 @@
 'use client';
+
 import { useState } from 'react';
-import { agents, Agent, truncateAddress } from '@/lib/api';
+import { Bot, Cpu, Plus, Search } from 'lucide-react';
+import { Agent, agents, truncateAddress } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import styles from './page.module.css';
+import { Badge, PageFrame, StatCard, badgeColor } from '@/components/ui/kit';
 
 export default function AgentsPage() {
   const { isConnected, connect } = useAuth();
-  const [tab, setTab] = useState<'register' | 'lookup'>('register');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  // Register
   const [agentAddress, setAgentAddress] = useState('');
   const [agenticTokenId, setAgenticTokenId] = useState('');
   const [metadataURI, setMetadataURI] = useState('');
-  const [txHash, setTxHash] = useState('');
-
-  // Lookup
   const [lookupAddress, setLookupAddress] = useState('');
   const [foundAgent, setFoundAgent] = useState<Agent | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
-  const handleRegister = async () => {
-    setError(''); setSuccess('');
+  const registerAgent = async () => {
+    setMessage('');
+    setError('');
     if (!agentAddress || !agenticTokenId || !metadataURI) {
-      setError('All fields are required.'); return;
+      setError('Agent address, Agentic Token ID, and metadata URI are required.');
+      return;
     }
     setLoading(true);
     try {
       const res = await agents.register({ agentAddress, agenticTokenId: Number(agenticTokenId), metadataURI });
-      setTxHash(res.txHash);
-      setSuccess(`Agent registered! Tx: ${res.txHash}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Registration failed');
+      setMessage(`Agent registered. Tx: ${res.txHash}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLookup = async () => {
-    setError(''); setFoundAgent(null);
-    if (!lookupAddress) { setError('Enter an address.'); return; }
+  const lookupAgent = async () => {
+    setMessage('');
+    setError('');
+    setFoundAgent(null);
+    if (!lookupAddress) {
+      setError('Enter an agent address to look up.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await agents.get(lookupAddress);
       setFoundAgent(res.agent);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Agent not found');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Agent not found');
     } finally {
       setLoading(false);
     }
@@ -54,113 +56,72 @@ export default function AgentsPage() {
 
   if (!isConnected) {
     return (
-      <div className={styles.connectWall}>
-        <div className={styles.connectIcon}>◉</div>
-        <h2>Connect Your Wallet</h2>
-        <p>You need to connect your wallet to manage agents.</p>
-        <button className="btn btn-primary" onClick={connect}>Connect Wallet</button>
-      </div>
+      <PageFrame>
+        <div className="connect-wall">
+          <Bot size={42} color="var(--text-faint)" />
+          <h2 style={{ color: 'var(--text)' }}>Connect Your Wallet</h2>
+          <p>Connect to register and manage data agents.</p>
+          <button className="btn btn-primary" onClick={connect}>Connect Wallet</button>
+        </div>
+      </PageFrame>
     );
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <div className="section-title">Manage</div>
-        <h1 className={styles.title}>Validator Agents</h1>
-        <p className={styles.sub}>Register and manage AI agents for dataset validation and dynamic pricing.</p>
+    <PageFrame title="Data Agents" subtitle="Your autonomous on-chain representatives for quality validation, pricing, and access management.">
+      <div className="alert alert-blue" style={{ marginBottom: 28 }}>
+        <Cpu size={19} color="var(--accent-light)" />
+        <span><strong style={{ color: 'var(--text)' }}>Data Agents are user-owned on-chain representatives.</strong> Once assigned to a data license, an agent validates quality, updates prices, and records agent activity on your behalf.</span>
       </div>
 
-      {/* Tabs */}
-      <div className={styles.tabs}>
-        <button className={`${styles.tab} ${tab === 'register' ? styles.tabActive : ''}`} onClick={() => setTab('register')}>
-          Register Agent
-        </button>
-        <button className={`${styles.tab} ${tab === 'lookup' ? styles.tabActive : ''}`} onClick={() => setTab('lookup')}>
-          Lookup Agent
-        </button>
-      </div>
+      {error && <div className="alert alert-red" style={{ marginBottom: 18 }}>{error}</div>}
+      {message && <div className="alert alert-green mono" style={{ marginBottom: 18, wordBreak: 'break-all' }}>{message}</div>}
 
-      <div className={styles.content}>
-        {error && <div className={styles.errorBox}>{error}</div>}
-        {success && <div className={styles.successBox}>{success}</div>}
+      <div className="grid grid-2">
+        <div className="card card-pad">
+          <h2 style={{ color: 'var(--text)', fontSize: 15, marginBottom: 16 }}>Register New Agent</h2>
+          <label className="label">Agent Wallet Address</label>
+          <input className="input mono" placeholder="0x..." value={agentAddress} onChange={(event) => setAgentAddress(event.target.value)} style={{ marginBottom: 14 }} />
+          <label className="label">Agentic Token ID</label>
+          <input className="input" type="number" placeholder="1" value={agenticTokenId} onChange={(event) => setAgenticTokenId(event.target.value)} style={{ marginBottom: 14 }} />
+          <label className="label">Metadata URI</label>
+          <input className="input" placeholder="https://..." value={metadataURI} onChange={(event) => setMetadataURI(event.target.value)} style={{ marginBottom: 18 }} />
+          <button className="btn btn-primary" onClick={registerAgent} disabled={loading}>
+            <Plus size={15} /> {loading ? 'Working...' : 'Register Agent'}
+          </button>
+        </div>
 
-        {tab === 'register' && (
-          <div className={styles.form}>
-            <div className={styles.field}>
-              <label className="label">Agent Wallet Address *</label>
-              <input className="input" placeholder="0x..." value={agentAddress} onChange={e => setAgentAddress(e.target.value)} />
-            </div>
-            <div className={styles.field}>
-              <label className="label">Agentic Token ID *</label>
-              <input className="input" type="number" placeholder="1" value={agenticTokenId} onChange={e => setAgenticTokenId(e.target.value)} />
-            </div>
-            <div className={styles.field}>
-              <label className="label">Metadata URI *</label>
-              <input className="input" placeholder="https://..." value={metadataURI} onChange={e => setMetadataURI(e.target.value)} />
-            </div>
-            <button className="btn btn-primary" onClick={handleRegister} disabled={loading}>
-              {loading ? 'Registering...' : 'Register Agent'}
+        <div className="card card-pad">
+          <h2 style={{ color: 'var(--text)', fontSize: 15, marginBottom: 16 }}>Lookup Agent</h2>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+            <input className="input mono" placeholder="0x agent address..." value={lookupAddress} onChange={(event) => setLookupAddress(event.target.value)} />
+            <button className="btn btn-primary" onClick={lookupAgent} disabled={loading}>
+              <Search size={15} />
             </button>
-            {txHash && (
-              <div className={styles.txBox}>
-                <span className="address">TX: {txHash}</span>
-              </div>
-            )}
           </div>
-        )}
 
-        {tab === 'lookup' && (
-          <div className={styles.form}>
-            <div className={styles.searchRow}>
-              <input className="input" placeholder="0x agent address..." value={lookupAddress} onChange={e => setLookupAddress(e.target.value)} style={{ flex: 1 }} />
-              <button className="btn btn-primary" onClick={handleLookup} disabled={loading}>
-                {loading ? '...' : 'Lookup'}
-              </button>
-            </div>
-
-            {foundAgent && (
-              <div className={`card ${styles.agentCard}`}>
-                <div className={styles.agentHeader}>
-                  <div className={styles.agentIcon}>◉</div>
-                  <div>
-                    <div className={styles.agentAddress}>{foundAgent.agentAddress}</div>
-                    <span className={`badge badge-${foundAgent.status.toLowerCase()}`}>{foundAgent.status}</span>
-                  </div>
+          {foundAgent ? (
+            <>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 18 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(167,139,250,0.14)', display: 'grid', placeItems: 'center' }}>
+                  <Bot size={22} color="var(--purple)" />
                 </div>
-                <div className={styles.agentStats}>
-                  <div className={styles.agentStat}>
-                    <span className={styles.statNum}>{foundAgent.totalPriceUpdates}</span>
-                    <span className={styles.statLbl}>Price Updates</span>
-                  </div>
-                  <div className={styles.agentStat}>
-                    <span className={styles.statNum}>{foundAgent.totalNegotiations}</span>
-                    <span className={styles.statLbl}>Negotiations</span>
-                  </div>
-                  <div className={styles.agentStat}>
-                    <span className={styles.statNum}>#{foundAgent.agenticTokenId}</span>
-                    <span className={styles.statLbl}>Token ID</span>
-                  </div>
-                </div>
-                <div className={styles.agentMeta}>
-                  <div className={styles.metaRow}>
-                    <span className={styles.metaKey}>On-Chain ID</span>
-                    <span className="mono">#{foundAgent.onChainAgentId}</span>
-                  </div>
-                  <div className={styles.metaRow}>
-                    <span className={styles.metaKey}>Contributor</span>
-                    <span className="address">{truncateAddress(foundAgent.contributor)}</span>
-                  </div>
-                  <div className={styles.metaRow}>
-                    <span className={styles.metaKey}>Registered</span>
-                    <span className={styles.metaVal}>{new Date(foundAgent.createdAt).toLocaleDateString()}</span>
-                  </div>
+                <div>
+                  <div className="mono" style={{ color: 'var(--text)', fontSize: 13 }}>{truncateAddress(foundAgent.agentAddress)}</div>
+                  <Badge color={badgeColor(foundAgent.status)}>{foundAgent.status}</Badge>
                 </div>
               </div>
-            )}
-          </div>
-        )}
+              <div className="grid grid-3">
+                <StatCard icon={Bot} label="Token ID" value={`#${foundAgent.agenticTokenId}`} color="var(--purple)" />
+                <StatCard icon={Cpu} label="Price Updates" value={foundAgent.totalPriceUpdates} color="var(--accent)" />
+                <StatCard icon={Search} label="Negotiations" value={foundAgent.totalNegotiations} color="var(--cyan)" />
+              </div>
+            </>
+          ) : (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6 }}>Search an agent address to see status, token ownership, price updates, and negotiation activity.</p>
+          )}
+        </div>
       </div>
-    </div>
+    </PageFrame>
   );
 }

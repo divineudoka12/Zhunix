@@ -17,16 +17,16 @@ class ComputeService {
   async getOptimalPrice(context: PricingContext): Promise<string> {
     const prompt = `
       You are a data marketplace pricing agent for DataVault, a decentralized AI training data marketplace.
-      Analyze the following dataset metrics and recommend an optimal price in ETH.
+      Analyze the following dataset metrics and recommend an optimal price in 0G.
 
       Dataset Type: ${context.dataType}
-      Current Price: ${context.currentPrice} ETH
+      Current Price: ${context.currentPrice} 0G
       Total Sales: ${context.totalSales}
-      Total Revenue: ${context.totalRevenue} ETH
+      Total Revenue: ${context.totalRevenue} 0G
       Market Demand: ${context.marketDemand}
 
       Rules:
-      - Price must be between 0.001 ETH and 10 ETH
+      - Price must be between 0.001 0G and 10 0G
       - High demand datasets should be priced 10-30% higher
       - Low sales datasets may need a 10-20% reduction to attract buyers
       - AI training data (TEXT, CODE) commands premium pricing

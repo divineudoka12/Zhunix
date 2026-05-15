@@ -1,111 +1,74 @@
 'use client';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import {
+  Home,
+  Layers,
+  LayoutDashboard,
+  Plus,
+  ShoppingBag,
+  Wallet,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { truncateAddress } from '@/lib/api';
-import styles from './Navbar.module.css';
 
 const navLinks = [
-  { href: '/marketplace', label: 'Marketplace' },
-  { href: '/upload', label: 'Upload' },
-  { href: '/agents', label: 'Agents' },
-  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
+  { href: '/upload', label: 'Create License', icon: Plus },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
   const { address, isConnected, isLoading, connect, disconnect } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => { setSidebarOpen(false); }, [pathname]);
-
-  useEffect(() => {
-    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [sidebarOpen]);
 
   return (
-    <>
-      <nav className={styles.nav}>
-        <div className={styles.inner}>
-          <Link href="/" className={styles.logo}>
-            <span className={styles.logoIcon}>⬡</span>
-            <span className={styles.logoText}>ZHUNIX</span>
-          </Link>
+    <aside className="sidebar">
+      <div className="logo-block">
+        <Link href="/" className="logo">
+          <span className="logo-mark">
+            <Layers size={16} color="white" />
+          </span>
+          <span className="logo-text">Zhunix</span>
+        </Link>
+        <div className="logo-kicker">DATA LICENSING PROTOCOL</div>
+      </div>
 
-          <ul className={styles.links}>
-            {navLinks.map(({ href, label }) => (
-              <li key={href}>
-                <Link href={href} className={`${styles.link} ${pathname.startsWith(href) ? styles.active : ''}`}>
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-
-          <div className={styles.right}>
-            {isConnected ? (
-              <div className={styles.walletGroup}>
-                <span className={styles.walletBadge}>
-                  <span className={styles.dot} />
-                  {truncateAddress(address!)}
-                </span>
-                <button className="btn btn-ghost" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={disconnect}>
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button className="btn btn-primary" onClick={connect} disabled={isLoading}>
-                {isLoading ? 'Connecting...' : 'Connect Wallet'}
-              </button>
-            )}
-          </div>
-
-          <button className={styles.hamburger} onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-            <span className={styles.bar} />
-            <span className={styles.bar} />
-            <span className={styles.bar} />
-          </button>
-        </div>
+      <nav className="nav-links" aria-label="Primary navigation">
+        {navLinks.map(({ href, label, icon: Icon }) => {
+          const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
+          return (
+            <Link key={href} href={href} className={`nav-link ${active ? 'active' : ''}`}>
+              <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className={`${styles.overlay} ${sidebarOpen ? styles.overlayVisible : ''}`} onClick={() => setSidebarOpen(false)} />
-
-      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
-        <div className={styles.sidebarHeader}>
-          <Link href="/" className={styles.logo}>
-            <span className={styles.logoIcon}>⬡</span>
-            <span className={styles.logoText}>ZHUNIX</span>
-          </Link>
-          <button className={styles.closeBtn} onClick={() => setSidebarOpen(false)}>✕</button>
-        </div>
-
-        <nav className={styles.sidebarNav}>
-          {navLinks.map(({ href, label }) => (
-            <Link key={href} href={href} className={`${styles.sidebarLink} ${pathname.startsWith(href) ? styles.sidebarActive : ''}`}>
-              <span className={styles.sidebarLinkIndicator} />
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className={styles.sidebarFooter}>
-          {isConnected ? (
-            <>
-              <div className={styles.sidebarWallet}>
-                <span className={styles.dot} />
-                <span className="address" style={{ wordBreak: 'break-all', fontSize: 11 }}>{address}</span>
-              </div>
-              <button className="btn btn-ghost" style={{ width: '100%' }} onClick={disconnect}>Disconnect</button>
-            </>
-          ) : (
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={connect} disabled={isLoading}>
-              {isLoading ? 'Connecting...' : 'Connect Wallet'}
-            </button>
-          )}
-        </div>
-      </aside>
-    </>
+      <div className="wallet-panel">
+        {isConnected ? (
+          <button className="wallet-row" onClick={disconnect} style={{ width: '100%', background: 'transparent', border: 0, textAlign: 'left' }}>
+            <span className="wallet-icon">
+              <Wallet size={13} color="var(--green)" />
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span className="wallet-label">Connected</span>
+              <span className="wallet-address" style={{ display: 'block' }}>
+                {truncateAddress(address || '')}
+              </span>
+            </span>
+            <span className="wallet-status" />
+          </button>
+        ) : (
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={connect} disabled={isLoading}>
+            <Wallet size={14} />
+            {isLoading ? 'Connecting' : 'Connect Wallet'}
+          </button>
+        )}
+      </div>
+    </aside>
   );
 }

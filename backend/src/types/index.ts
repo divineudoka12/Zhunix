@@ -47,8 +47,20 @@ export interface QualityAssessment {
   accuracy: number;
   authenticity: number;
   consistency: number;
+  valueScore?: number;
+  complianceRisk?: "LOW" | "MEDIUM" | "HIGH";
+  rejectionReasons?: string[];
   recommendations: string[];
   issues: string[];
+}
+
+export interface UploadPolicyAssessment {
+  approved: boolean;
+  valueScore: number;
+  complianceRisk: "LOW" | "MEDIUM" | "HIGH";
+  dataCategory: string;
+  rejectionReasons: string[];
+  recommendations: string[];
 }
 
 export interface DatasetMetadata {
@@ -60,6 +72,9 @@ export interface DatasetMetadata {
   subscriptionPrice?: string;
   tags?: string[];
   samplePreview?: string;
+  metadata: Record<string, unknown>;
+  metadataURI: string;
+  usedFallback: boolean;
 }
 
 export interface OnChainDataset {

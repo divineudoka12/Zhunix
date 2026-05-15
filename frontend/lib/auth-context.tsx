@@ -1,7 +1,9 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SiweMessage } from 'siwe';
-import { auth } from '@/lib/api';
+import { Eip1193Provider, assert0GNetwork, auth, ensure0GNetwork } from '@/lib/api';
+
+const SIWE_CHAIN_ID = Number(process.env.NEXT_PUBLIC_OG_CHAIN_ID || '16602');
 
 interface AuthState {
   address: string | null;
@@ -31,13 +33,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const getInjectedProvider = (): Eip1193Provider | null => {
+    if (!window.ethereum) return null;
+    return window.ethereum as Eip1193Provider;
+  };
+
+  const getErrorMessage = (err: unknown) => {
+    if (err instanceof Error && err.message) return err.message;
+    if (typeof err === 'object' && err && 'message' in err) {
+      return String((err as { message?: unknown }).message || 'Connection failed');
+    }
+    return 'Connection failed. Check that your wallet supports 0G Galileo Testnet.';
+  };
+
   const connect = async () => {
     setIsLoading(true);
     try {
-      if (!window.ethereum) throw new Error('No wallet found. Install MetaMask.');
+      const provider = getInjectedProvider();
+      if (!provider) {
+        throw new Error('No wallet found. Install MetaMask or another injected browser wallet.');
+      }
 
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
+      const accounts = await provider.request({ method: 'eth_requestAccounts' }) as string[];
       const addr = accounts[0];
+      if (!addr) throw new Error('No wallet account selected.');
+
+      await ensure0GNetwork(provider);
+      await assert0GNetwork(provider);
+
       const { ethers } = await import('ethers');
       const checksumAddr = ethers.getAddress(addr);
 
@@ -52,13 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         statement: 'Sign in to Zhunix Data Marketplace',
         uri: origin,
         version: '1',
-        chainId: 1,
+        chainId: SIWE_CHAIN_ID,
         nonce,
       });
 
       const siweMessage = messageObj.prepareMessage();
 
-      const signature = await window.ethereum.request({
+      const signature = await provider.request({
         method: 'personal_sign',
         params: [siweMessage, addr],
       }) as string;
@@ -70,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAddress(result.address);
     } catch (err) {
       console.error('Connect failed:', err);
-      alert(err instanceof Error ? err.message : 'Connection failed');
+      alert(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

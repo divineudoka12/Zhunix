@@ -1,128 +1,103 @@
 import Link from 'next/link';
-import styles from './page.module.css';
+import {
+  ArrowRight,
+  CheckCircle,
+  Cpu,
+  Database,
+  DollarSign,
+  Eye,
+  Hash,
+  Shield,
+  Zap,
+} from 'lucide-react';
+import { PageFrame } from '@/components/ui/kit';
 
-const stats = [
-  { value: '0G', label: 'Storage Layer' },
-  { value: 'TEE', label: 'Privacy Stack' },
-  { value: 'EVM', label: 'On-Chain Logic' },
-  { value: 'AI', label: 'Quality Scoring' },
+const flow = [
+  { icon: Database, label: 'Data Source', sub: 'Upload or connect' },
+  { icon: Cpu, label: 'Data Agent', sub: 'Your representative' },
+  { icon: Hash, label: '0G Storage', sub: 'Merkle root hash' },
+  { icon: Shield, label: 'On-chain License', sub: 'Tokenized asset' },
+  { icon: Eye, label: 'Buyer Access', sub: 'Permissioned' },
+  { icon: DollarSign, label: 'Creator Payout', sub: 'On-chain revenue' },
 ];
 
-const features = [
-  {
-    icon: '◈',
-    title: 'Privacy-Preserving Storage',
-    desc: 'Files stored on 0G Labs with cryptographic root hashes. Your data is yours.',
-  },
-  {
-    icon: '◉',
-    title: 'AI-Powered Validation',
-    desc: 'Agents score completeness, accuracy, authenticity and consistency before listing.',
-  },
-  {
-    icon: '◇',
-    title: 'On-Chain Purchases',
-    desc: 'Every transaction is indexed on-chain. Transparent provenance, zero intermediaries.',
-  },
-  {
-    icon: '◆',
-    title: 'Agent Marketplace',
-    desc: 'Register validator agents, trigger dynamic pricing cycles, earn agentic token rewards.',
-  },
+const trust = [
+  { icon: Hash, label: '0G Storage', desc: 'Content-addressed storage with cryptographic root hashes.' },
+  { icon: CheckCircle, label: 'AI Validation', desc: 'Quality scored for completeness, accuracy, authenticity, and consistency.' },
+  { icon: Shield, label: 'On-chain Licensing', desc: 'Usage rights, purchase events, and payouts are traceable.' },
+  { icon: DollarSign, label: 'Creator Earnings', desc: 'Pay-per-access and subscriptions route value back to contributors.' },
 ];
 
 export default function HomePage() {
   return (
-    <div className={styles.page}>
-      {/* Background grid */}
-      <div className={styles.grid} />
-
-      {/* Hero */}
-      <section className={styles.hero}>
-        <div className={styles.heroInner}>
-          <div className={styles.tag}>
-            <span className={styles.tagDot} />
-            Privacy-Preserving Data Marketplace
-          </div>
-          <h1 className={styles.heroTitle} style={{opacity: 1, transform: 'none'}}>
-            Trade Data.
-            <br />
-            <span className={styles.heroAccent}>Trust Nothing</span>
-            <br />
-            Verify Everything.
-          </h1>
-          <p className={styles.heroSub} style={{opacity: 1, transform: 'none'}}>
-            Zhunix is a decentralized marketplace where contributors list datasets with cryptographic
-            integrity and buyers access them through on-chain smart contracts — with zero trust assumptions.
-          </p>
-          <div className={styles.heroCta} style={{opacity: 1, transform: 'none'}}>
-            <Link href="/marketplace" className="btn btn-primary">
-              Explore Marketplace →
-            </Link>
-            <Link href="/upload" className="btn btn-ghost">
-              List a Dataset
-            </Link>
-          </div>
+    <PageFrame home>
+      <section style={{ textAlign: 'center', padding: '56px 0 52px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.25)', borderRadius: 999, padding: '5px 14px', marginBottom: 24 }}>
+          <Zap size={11} color="var(--cyan)" fill="var(--cyan)" />
+          <span style={{ color: 'var(--cyan)', fontSize: 11.5, fontWeight: 800, letterSpacing: '0.04em' }}>BUILT ON 0G LABS</span>
         </div>
 
-        {/* Decorative terminal */}
-       <div className={styles.terminal} style={{opacity: 1, transform: 'none'}}>
-          <div className={styles.terminalBar}>
-            <span className={styles.termDot} style={{ background: '#ff5f57' }} />
-            <span className={styles.termDot} style={{ background: '#febc2e' }} />
-            <span className={styles.termDot} style={{ background: '#28c840' }} />
-            <span className={styles.termTitle}>zhunix.log</span>
-          </div>
-          <div className={styles.terminalBody}>
-            <div className={styles.termLine}><span className={styles.termPrompt}>$</span> Dataset uploaded → 0G storage</div>
-            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> Root hash: 0x4f9a...c821</div>
-            <div className={styles.termLine}><span className={styles.termPrompt}>$</span> Validation triggered</div>
-            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> Quality score: <span className={styles.termRed}>87</span>/100</div>
-            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> Status: APPROVED</div>
-            <div className={styles.termLine}><span className={styles.termPrompt}>$</span> Listed on marketplace</div>
-            <div className={styles.termLine}><span className={styles.termGreen}>✓</span> txHash: 0x71bc...98fa</div>
-            <div className={styles.termLine}><span className={styles.termCursor}>█</span></div>
-          </div>
+        <h1 style={{ color: 'var(--text)', fontSize: 'clamp(38px, 6vw, 58px)', fontWeight: 800, letterSpacing: '-0.045em', lineHeight: 1.06, marginBottom: 18 }}>
+          Own Your Data.
+          <br />
+          <span style={{ backgroundImage: 'linear-gradient(90deg, var(--accent) 20%, var(--cyan) 80%)', WebkitBackgroundClip: 'text', color: 'transparent' }}>
+            License It With Agents.
+          </span>
+        </h1>
+
+        <p style={{ color: 'var(--text-muted)', fontSize: 17, maxWidth: 580, margin: '0 auto 36px', lineHeight: 1.7 }}>
+          Zhunix helps people turn valuable data into programmable, on-chain licenses. Agents classify, validate, price, and protect access so contributors keep control and earn from approved buyers.
+        </p>
+
+        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link href="/upload" className="btn btn-primary" style={{ minHeight: 46, padding: '0 28px', fontSize: 15 }}>
+            Create Data License <ArrowRight size={16} />
+          </Link>
+          <Link href="/marketplace" className="btn btn-secondary" style={{ minHeight: 46, padding: '0 28px', fontSize: 15 }}>
+            Explore Marketplace
+          </Link>
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section className={styles.statsBar}>
-        {stats.map((s) => (
-          <div key={s.label} className={styles.statItem}>
-            <div className="stat-number">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
+      <section className="card card-pad home-flow-card">
+        <p className="section-kicker" style={{ marginBottom: 22 }}>How Zhunix Works</p>
+        <div className="home-flow-grid">
+          {flow.map(({ icon: Icon, label, sub }) => (
+            <div key={label} className="home-flow-step">
+              <div className="home-flow-icon">
+                <Icon size={22} color="var(--accent-light)" strokeWidth={1.6} />
+              </div>
+              <div className="home-flow-label">{label}</div>
+              <div className="home-flow-sub">{sub}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid grid-4" style={{ marginBottom: 24 }}>
+        {trust.map(({ icon: Icon, label, desc }) => (
+          <div key={label} className="card card-pad">
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(6,182,212,0.1)', display: 'grid', placeItems: 'center', marginBottom: 12 }}>
+              <Icon size={17} color="var(--cyan)" strokeWidth={1.7} />
+            </div>
+            <div style={{ color: 'var(--text)', fontSize: 13.5, fontWeight: 700, marginBottom: 5 }}>{label}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.55 }}>{desc}</div>
           </div>
         ))}
       </section>
 
-      {/* Features */}
-      <section className={styles.features}>
-        <div className={styles.featuresInner}>
-          <div className="section-title">How it works</div>
-          <h2 className={styles.featuresTitle}>Built for trustless data exchange</h2>
-          <div className={styles.featuresGrid}>
-            {features.map((f) => (
-              <div key={f.title} className={`card card-red-hover ${styles.featureCard}`}>
-                <div className={styles.featureIcon}>{f.icon}</div>
-                <h3 className={styles.featureTitle}>{f.title}</h3>
-                <p className={styles.featureDesc}>{f.desc}</p>
-              </div>
-            ))}
+      <section className="grid grid-3">
+        {[
+          ['Licenses Created', '2,418', 'var(--accent)'],
+          ['Revenue Distributed', '$184K', 'var(--green)'],
+          ['Validated Assets', '1,903', 'var(--cyan)'],
+        ].map(([label, value, color]) => (
+          <div key={label} className="card" style={{ padding: '26px 24px', textAlign: 'center' }}>
+            <div style={{ color, fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em' }}>{value}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 5 }}>{label}</div>
           </div>
-        </div>
+        ))}
       </section>
-
-      {/* CTA */}
-      <section className={styles.ctaSection}>
-        <div className={styles.ctaInner}>
-          <h2 className={styles.ctaTitle}>Ready to contribute?</h2>
-          <p className={styles.ctaSub}>List your dataset in minutes. Earn on every access.</p>
-          <Link href="/upload" className="btn btn-primary">
-            Start Uploading
-          </Link>
-        </div>
-      </section>
-    </div>
+    </PageFrame>
   );
 }

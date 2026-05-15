@@ -589,6 +589,54 @@ npm run build
 
 ---
 
+## Demo Walkthrough
+
+> A guided flow for evaluators and first-time users.
+
+### 1. Landing & Thesis
+Open the root URL. The landing page communicates the core premise:
+data should be **licensed, validated, and monetized** — not scraped.
+
+### 2. Authentication
+Connect your wallet and sign in via **SIWE (Sign-In with Ethereum)** to establish an on-chain identity.
+
+### 3. Upload a Dataset
+Navigate to `/upload` and submit any CSV file to trigger the agentic pipeline:
+
+| Step | Action |
+|------|--------|
+| Classify | AI categorizes the dataset by type and sensitivity |
+| Assign Agent | Routes to the appropriate processing agent |
+| Store | Uploads to decentralized storage |
+| Draft License | Generates a usage license with AI-suggested terms |
+| List On-Chain | Publishes the listing to the smart contract |
+| Validate | Runs quality scoring and returns a validation report |
+
+### 4. Inspect the Generated License
+The license output includes:
+- **Name** and dataset identity
+- **Usage rights** (commercial, research, derivative, etc.)
+- **Price** (in tokens)
+- **Privacy mode** (public / restricted)
+- **Storage root hash** or submission URL for provenance
+
+### 5. Dataset Detail Page
+Open the dataset's page to review its **quality score** and full validation breakdown.
+
+### 6. Marketplace
+Go to `/marketplace` and:
+1. Apply filters to surface only **approved datasets**
+2. Open **Marketplace Scout** and describe a buyer's data need in natural language
+3. Review the **ranked basket** with AI-generated match reasons
+4. Complete a **single purchase** or use the **bulk purchase** path
+5. Open the licensed access flow to view the **certificate / policy response**
+
+---
+
+### One-Line Judge Takeaway
+
+> *Zhunix is a complete agentic data licensing loop: upload, store, license, validate, list, buy, and enforce usage policy.*
+
 ---
 
 ## API Surface

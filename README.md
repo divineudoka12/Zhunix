@@ -516,50 +516,32 @@ cd ../smart-contract
 npm install
 ```
 
-### Backend Environment
+## Environment Variables
 
-Create `backend/.env`:
+See `.env.example` for the full annotated list. Split between the two services:
 
-```env
-PORT=5000
-NODE_ENV=development
+### Backend (`backend/.env`)
 
-MONGODB_URI=mongodb://localhost:27017/zhunix
-JWT_SECRET=replace-with-long-secret
-JWT_EXPIRES_IN=7d
+| Group | Vars |
+|-------|------|
+| Server | `PORT`, `NODE_ENV` |
+| Database | `MONGODB_URI` |
+| Auth | `JWT_SECRET`, `JWT_EXPIRES_IN` |
+| 0G Network | `OG_RPC_URL`, `OG_CHAIN_ID`, `OG_STORAGE_NODE_URL`, `OG_STORAGE_UPLOAD_TASK_SIZE`, `OG_STORAGE_UPLOAD_TIMEOUT_MS`, `OG_STORAGE_UPLOAD_NODE_ATTEMPTS` |
+| 0G Compute | `ZG_SERVICE_URL`, `ZG_API_SECRET`, `ZG_MODEL` |
+| Contracts | `DATA_REGISTRY_ADDRESS`, `DATA_MARKETPLACE_ADDRESS`, `AGENT_REGISTRY_ADDRESS` |
+| Platform | `PLATFORM_PRIVATE_KEY` |
 
-OG_RPC_URL=https://evmrpc-testnet.0g.ai
-OG_CHAIN_ID=16602
-OG_STORAGE_NODE_URL=replace-with-0g-storage-indexer-url
-OG_STORAGE_UPLOAD_TASK_SIZE=8
-OG_STORAGE_UPLOAD_TIMEOUT_MS=180000
-OG_STORAGE_UPLOAD_NODE_ATTEMPTS=3
+### Frontend (`frontend/.env.local`)
 
-PLATFORM_PRIVATE_KEY=replace-with-platform-private-key
+| Group | Vars |
+|-------|------|
+| API | `NEXT_PUBLIC_API_URL` |
+| 0G Network | `NEXT_PUBLIC_OG_CHAIN_ID`, `NEXT_PUBLIC_OG_RPC_URL` |
+| Contracts | `NEXT_PUBLIC_DATA_MARKETPLACE_ADDRESS` |
+| Default Agent | `NEXT_PUBLIC_DEFAULT_AGENT_NAME`, `NEXT_PUBLIC_DEFAULT_AGENT_ADDRESS`, `NEXT_PUBLIC_DEFAULT_AGENT_TOKEN_ID` |
 
-ZG_SERVICE_URL=replace-with-0g-compute-service-url
-ZG_API_SECRET=replace-with-0g-compute-secret
-ZG_MODEL=qwen/qwen-2.5-7b-instruct
-
-DATA_REGISTRY_ADDRESS=0xE71EEE7D42d6DE3Ed1B3B5b2685c78b452965757
-DATA_MARKETPLACE_ADDRESS=0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3
-AGENT_REGISTRY_ADDRESS=0xd0d990f448c3155c961b30AD3Ae215C6A14d3281
-```
-
-### Frontend Environment
-
-Create `frontend/.env.local`:
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_OG_CHAIN_ID=16602
-NEXT_PUBLIC_OG_RPC_URL=https://evmrpc-testnet.0g.ai
-NEXT_PUBLIC_DATA_MARKETPLACE_ADDRESS=0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3
-
-NEXT_PUBLIC_DEFAULT_AGENT_NAME=Zhunix Default Agent
-NEXT_PUBLIC_DEFAULT_AGENT_ADDRESS=replace-with-agent-wallet
-NEXT_PUBLIC_DEFAULT_AGENT_TOKEN_ID=replace-with-agentic-id
-```
+> Your local `.env` files can hold the union of both — backend and frontend will each read what they need. Never commit `.env` or `.env.local`.
 
 ### Run Locally
 

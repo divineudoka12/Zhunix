@@ -589,42 +589,6 @@ npm run build
 
 ---
 
-## Demo Script
-
-Use this for the hackathon presentation:
-
-1. Open the landing page and explain the thesis: data should be licensed, validated, and monetized, not scraped.
-2. Connect wallet and sign in with SIWE.
-3. Go to `/upload`.
-4. Upload a CSV dataset.
-5. Walk through the pipeline:
-   - Classify data
-   - Assign agent
-   - Upload data
-   - Draft license
-   - List on-chain
-   - Validate quality
-6. Show the generated license:
-   - Name
-   - Usage rights
-   - Price
-   - Privacy mode
-   - Storage root hash or submission URL
-7. Open the dataset page.
-8. Show quality score and validation details.
-9. Open `/marketplace`.
-10. Use filters to show only approved datasets.
-11. Open Marketplace Scout and prompt it for a buyer need.
-12. Show the ranked basket and match reasons.
-13. Purchase one dataset or use the bulk purchase path.
-14. Open the licensed access flow and show the certificate/policy response.
-
-One-line judge takeaway:
-
-```text
-Zhunix is a complete agentic data licensing loop: upload, store, license, validate, list, buy, and enforce usage policy.
-```
-
 ---
 
 ## API Surface

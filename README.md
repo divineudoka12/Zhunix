@@ -11,59 +11,27 @@ Zhunix does not pretend that every uploaded file is useful. It rejects low-value
 ## Live Deployment
 
 | Artifact | Value |
-|---|---|
-| **Chain** | 0G Galileo Testnet, chainId `16602` |
-| **Frontend** | `frontend/` Next.js app |
-| **Backend** | `backend/` Express API |
-| **Storage** | 0G Storage SDK |
-| **Compute** | 0G Compute proxy through OpenAI-compatible client |
-| **DataRegistry** | `0xE71EEE7D42d6DE3Ed1B3B5b2685c78b452965757` |
-| **DataMarketplace** | `0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3` |
-| **AgentRegistry** | `0xd0d990f448c3155c961b30AD3Ae215C6A14d3281` |
-| **Default app route** | `/` |
-| **Upload flow** | `/upload` |
-| **Marketplace** | `/marketplace` |
-| **Agent directory** | `/agents` |
-| **Dashboard** | `/dashboard` |
+|----------|-------|
+| Chain | 0G Galileo Testnet (chainId 16602) |
+| Frontend | `frontend/` — Next.js app |
+| Backend | `backend/` — Express API |
+| DataRegistry | `0xE71EEE7D42d6DE3Ed1B3B5b2685c78b452965757` |
+| DataMarketplace | `0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3` |
+| AgentRegistry | `0xd0d990f448c3155c961b30AD3Ae215C6A14d3281` |
+| Example upload tx | `0x...` |
+| Example purchase tx | `0x...` |
+| Example storage root | `0x...` |
 
-Every dataset that passes through Zhunix is anchored by a 0G Storage root hash and registered through `DataRegistry`. Every buyer purchase is settled through `DataMarketplace`, indexed by the backend, and exposed as a licensed access record.
+Every dataset is anchored by a 0G Storage root hash and registered on-chain through DataRegistry. Every purchase is settled through DataMarketplace and exposed as a licensed access record.
 
----
+## 0G Integration
 
-## 0G Integration Proof
-
-Zhunix uses multiple 0G components in the core product path, not as optional add-ons.
-
-| 0G Component | How Zhunix Uses It | Proof To Provide |
-|---|---|---|
-| **0G Chain** | Dataset licenses, marketplace purchases, subscriptions, agent pricing, and contributor payouts are represented through Solidity contracts deployed on 0G Galileo. | Contract addresses and explorer links below |
-| **0G Storage** | Uploaded datasets are stored through the 0G Storage SDK and identified by root hash, transaction sequence, and storage scan submission URL. | Example storage root and storage scan link from a successful upload |
-| **0G Compute** | Agents use 0G Compute for upload policy assessment, license drafting, dataset validation, and pricing recommendations. | Backend services in `backend/src/services/validation`, `backend/src/services/license`, and `backend/src/services/compute` |
-| **Agent Identity Layer** | `AgentRegistry` links contributor-owned agentic IDs to authorized agent wallets for validation and pricing workflows. | `AgentRegistry` contract address and agent registration transaction |
-
-### Contract Addresses
-
-| Contract | Address | Explorer Link |
-|---|---|---|
-| **DataRegistry** | `0xE71EEE7D42d6DE3Ed1B3B5b2685c78b452965757` | Add 0G Explorer link before submission |
-| **DataMarketplace** | `0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3` | Add 0G Explorer link before submission |
-| **AgentRegistry** | `0xd0d990f448c3155c961b30AD3Ae215C6A14d3281` | Add 0G Explorer link before submission |
-
-### Verification Checklist For Judges
-
-Before final submission, include these links:
-
-| Required Proof | Link |
-|---|---|
-| DataRegistry explorer page | Add link |
-| DataMarketplace explorer page | Add link |
-| AgentRegistry explorer page | Add link |
-| Example dataset registration transaction | Add link |
-| Example purchase transaction | Add link |
-| Example 0G Storage submission URL | Add link |
-| Demo video showing the upload-to-license flow | Add link |
-
-The minimum valid proof path is: upload a dataset through Zhunix, capture its 0G Storage root hash, register that root hash through `DataRegistry`, then show the resulting 0G explorer transaction and storage submission link.
+| Component | Usage |
+|-----------|-------|
+| 0G Chain | Licenses, purchases, subscriptions, agent pricing, and payouts via Solidity contracts on 0G Galileo |
+| 0G Storage | Datasets stored via the 0G Storage SDK, identified by root hash and storage scan URL |
+| 0G Compute | Agents use 0G Compute for license drafting, validation, and pricing — see `backend/src/services/` |
+| Agent Identity | AgentRegistry links contributor wallets to agentic IDs for validation workflows |
 
 ---
 

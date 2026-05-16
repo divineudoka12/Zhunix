@@ -726,4 +726,4 @@ Built for the hackathon as an end-to-end 0G data licensing prototype.
 
 ## License
 
-Add your preferred license before final submission.
+MIT License — see [LICENSE](./LICENSE) for details.

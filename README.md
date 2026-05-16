@@ -15,9 +15,9 @@ Zhunix does not pretend that every uploaded file is useful. It rejects low-value
 | Chain | 0G Galileo Testnet (chainId 16602) |
 | Frontend | `frontend/` — Next.js app |
 | Backend | `backend/` — Express API |
-| DataRegistry (v2) | `0x2d4752a3133Bd3301489d6c29745949b48F1AdA4` | [View](https://chainscan-galileo.0g.ai/address/0x2d4752a3133bd3301489d6c29745949b48f1ada4) |
-| DataMarketplace (v2) | `0xb4493191129a3Da623AD23605D0a0c1f64F586DF` | [View](https://chainscan-galileo.0g.ai/address/0xb4493191129a3da623ad23605d0a0c1f64f586df) |
-| AgentRegistry | `0xd0d990f448c3155c961b30AD3Ae215C6A14d3281` | [View](https://chainscan-galileo.0g.ai/address/0xd0d990f448c3155c961b30ad3ae215c6a14d3281) |
+| DataRegistry (v2) | `0x2d4752a3133Bd3301489d6c29745949b48F1AdA4` | (https://chainscan-galileo.0g.ai/address/0x2d4752a3133bd3301489d6c29745949b48f1ada4) |
+| DataMarketplace (v2) | `0xb4493191129a3Da623AD23605D0a0c1f64F586DF` | (https://chainscan-galileo.0g.ai/address/0xb4493191129a3da623ad23605d0a0c1f64f586df) |
+| AgentRegistry | `0xd0d990f448c3155c961b30AD3Ae215C6A14d3281` | (https://chainscan-galileo.0g.ai/address/0xd0d990f448c3155c961b30ad3ae215c6a14d3281) |
 | Example purchase tx | `0xac1b73213f97411a04e6f9b114df779b7ff744a94252777e7e00684b4248b925` | [View](https://chainscan-galileo.0g.ai/tx/0xac1b73213f97411a04e6f9b114df779b7ff744a94252777e7e00684b4248b925) |
 | Example storage root | `112629` | [View](https://storagescan-galileo.0g.ai/submission/112629) |
 

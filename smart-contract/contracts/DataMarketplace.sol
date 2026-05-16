@@ -76,6 +76,7 @@ contract DataMarketplace {
         require(ds.status == DataRegistry.DatasetStatus.ACTIVE, "Marketplace: dataset not active");
         require(msg.value == ds.pricePerAccess, "Marketplace: incorrect payment amount");
         require(msg.sender != ds.contributor, "Marketplace: contributor cannot buy own dataset");
+        require(!_hasActiveAccess(msg.sender, datasetId), "Marketplace: access already purchased");
 
         _settle(datasetId, ds.contributor, msg.value, false);
     }
@@ -93,11 +94,17 @@ contract DataMarketplace {
     }
 
     function bulkPurchase(uint256[] calldata datasetIds) external payable {
+        require(datasetIds.length > 0, "Marketplace: empty basket");
+
         uint256 totalRequired = 0;
         DataRegistry.Dataset[] memory datasets = new DataRegistry.Dataset[](datasetIds.length);
 
         // validate all datasets and sum total cost before touching money
         for (uint256 i = 0; i < datasetIds.length; i++) {
+            require(!_hasActiveAccess(msg.sender, datasetIds[i]), "Marketplace: access already purchased");
+            for (uint256 j = 0; j < i; j++) {
+                require(datasetIds[i] != datasetIds[j], "Marketplace: duplicate dataset");
+            }
             DataRegistry.Dataset memory ds = registry.getDataset(datasetIds[i]);
             require(ds.status == DataRegistry.DatasetStatus.ACTIVE, "Marketplace: a dataset is not active");
             require(msg.sender != ds.contributor, "Marketplace: cannot buy own dataset");
@@ -184,6 +191,10 @@ contract DataMarketplace {
     }
 
     function hasActiveAccess(address buyer, uint256 datasetId) external view returns (bool) {
+        return _hasActiveAccess(buyer, datasetId);
+    }
+
+    function _hasActiveAccess(address buyer, uint256 datasetId) internal view returns (bool) {
         return _hasPurchased[buyer][datasetId] || registry.isSubscriptionActive(datasetId, buyer);
     }
 

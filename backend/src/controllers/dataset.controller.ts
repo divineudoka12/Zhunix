@@ -158,24 +158,35 @@ export const getDatasets = async (
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const tokenizePrompt = (prompt: string) =>
+const normalizeScoutPrompt = (prompt: string) =>
   prompt
     .toLowerCase()
+    .replace(/\bfinancies\b/g, "finance")
+    .replace(/\bfinances\b/g, "finance")
+    .replace(/\bfinacial\b/g, "financial")
+    .replace(/\bfinace\b/g, "finance")
+    .replace(/\bstickly\b/g, "strictly")
+    .replace(/\benterprice\b/g, "enterprise")
+    .replace(/\benterprises\b/g, "enterprise")
+    .replace(/\bsurveys\b/g, "survey");
+
+const tokenizePrompt = (prompt: string) =>
+  normalizeScoutPrompt(prompt)
     .split(/[^a-z0-9_]+/i)
     .map((token) => token.trim())
     .filter((token) => token.length > 2)
-    .filter((token) => !["the", "and", "for", "with", "data", "dataset", "datasets", "license", "licenses", "buy", "need", "want"].includes(token))
+    .filter((token) => !["the", "and", "for", "with", "data", "dataset", "datasets", "license", "licenses", "buy", "need", "want", "strictly", "only", "just", "budget"].includes(token))
     .slice(0, 12);
 
 const DATA_TYPE_INTENTS: Array<{ dataType: DataType; terms: string[] }> = [
-  { dataType: DataType.FINANCIAL, terms: ["financial", "finance", "fintech", "transaction", "transactions", "sales", "revenue", "payment", "payments", "invoice", "invoices", "banking", "accounting"] },
-  { dataType: DataType.BEHAVIORAL, terms: ["behavioral", "behavioural", "behavior", "behaviour", "clickstream", "click", "session", "sessions", "events", "funnel", "retention", "conversion"] },
+  { dataType: DataType.FINANCIAL, terms: ["financial", "finance", "fintech", "transaction", "transactions", "sales", "revenue", "payment", "payments", "invoice", "invoices", "banking", "accounting", "ledger", "payroll", "expense", "expenses"] },
+  { dataType: DataType.BEHAVIORAL, terms: ["behavioral", "behavioural", "behavior", "behaviour", "clickstream", "click", "session", "sessions", "events", "funnel", "retention", "conversion", "survey", "questionnaire", "respondent", "respondents", "feedback"] },
   { dataType: DataType.VIDEO, terms: ["video", "videos", "footage", "clip", "clips", "recording", "recordings"] },
   { dataType: DataType.IMAGE, terms: ["image", "images", "photo", "photos", "picture", "pictures", "vision", "object", "detection"] },
   { dataType: DataType.TEXT, terms: ["text", "document", "documents", "review", "reviews", "comment", "comments", "support", "chat", "faq", "article", "articles"] },
   { dataType: DataType.CODE, terms: ["code", "source", "repository", "repositories", "github", "programming", "script", "scripts"] },
   { dataType: DataType.AUDIO, terms: ["audio", "voice", "speech", "sound", "podcast", "call", "calls"] },
-  { dataType: DataType.DOMAIN, terms: ["domain", "website", "web", "url", "urls", "crawl", "scrape", "scraped", "site", "sites"] },
+  { dataType: DataType.DOMAIN, terms: ["domain", "website", "web", "url", "urls", "crawl", "scrape", "scraped", "site", "sites", "enterprise", "company", "companies", "business", "b2b", "organization", "organizations"] },
 ];
 
 const PERMISSION_INTENTS: Array<{ permission: UsagePermission; terms: string[] }> = [
@@ -185,7 +196,7 @@ const PERMISSION_INTENTS: Array<{ permission: UsagePermission; terms: string[] }
 ];
 
 const inferScoutIntent = (prompt: string) => {
-  const normalized = prompt.toLowerCase();
+  const normalized = normalizeScoutPrompt(prompt);
   const dataTypes = DATA_TYPE_INTENTS
     .filter((intent) => intent.terms.some((term) => new RegExp(`\\b${escapeRegex(term)}\\b`, "i").test(normalized)))
     .map((intent) => intent.dataType);
@@ -203,6 +214,17 @@ const inferScoutIntent = (prompt: string) => {
     matchedTerms,
   };
 };
+
+const inferBudgetFromPrompt = (prompt: string): number => {
+  const normalized = normalizeScoutPrompt(prompt);
+  const match = normalized.match(/\b(?:budget|under|below|less than|max|maximum|up to)\s*(?:is|of|:)?\s*([0-9]+(?:\.[0-9]+)?)\s*(?:og|0g)?\b/i);
+  if (!match) return 0;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const isStrictScoutPrompt = (prompt: string): boolean =>
+  /\b(strictly|only|just|must|exactly)\b/i.test(normalizeScoutPrompt(prompt));
 
 const priceTo0G = (price: string) => {
   const parsed = Number(price || 0);
@@ -245,7 +267,9 @@ export const scoutMarketplace = async (
 ): Promise<void> => {
   try {
     const prompt = String(req.body.prompt || "").trim();
-    const budget = Number(req.body.budget || 0);
+    const promptBudget = inferBudgetFromPrompt(prompt);
+    const bodyBudget = Number(req.body.budget || 0);
+    const budget = Number.isFinite(bodyBudget) && bodyBudget > 0 ? bodyBudget : promptBudget;
     const limit = Math.min(Number(req.body.limit || 12), 25);
 
     if (!prompt) {
@@ -255,6 +279,7 @@ export const scoutMarketplace = async (
     const intent = inferScoutIntent(prompt);
     const tokens = tokenizePrompt(prompt);
     const searchTokens = tokens.filter((token) => !intent.matchedTerms.includes(token));
+    const strictPrompt = isStrictScoutPrompt(prompt);
 
     const filter: Record<string, unknown> = {
       status: DatasetStatus.ACTIVE,
@@ -270,6 +295,12 @@ export const scoutMarketplace = async (
       .limit(limit * 5);
 
     const scored = candidates
+      .filter((dataset) => {
+        if (intent.dataTypes.length > 0) return true;
+        if (!strictPrompt) return true;
+        const searchable = `${dataset.name} ${dataset.description} ${(dataset.tags || []).join(" ")} ${dataset.dataType} ${dataset.permission}`.toLowerCase();
+        return searchTokens.some((token) => searchable.includes(token));
+      })
       .map((dataset) => {
         const searchable = `${dataset.name} ${dataset.description} ${(dataset.tags || []).join(" ")} ${dataset.dataType} ${dataset.permission}`.toLowerCase();
         const matchCount = searchTokens.filter((token) => searchable.includes(token)).length;
@@ -283,7 +314,7 @@ export const scoutMarketplace = async (
             ...(intent.dataTypes.length ? [`Type locked to ${intent.dataTypes.join(", ")}`] : []),
             ...(intent.permissions.length ? [`Usage matched ${intent.permissions.join(", ")}`] : []),
             `${dataset.qualityScore}/100 quality score`,
-            ...(matchCount ? [`${matchCount} prompt terms matched`] : ["Approved high-quality fallback match"]),
+            ...(matchCount ? [`${matchCount} prompt terms matched`] : strictPrompt ? ["Strict prompt matched by type"] : ["Approved high-quality fallback match"]),
             dataset.validationStatus === ValidationStatus.APPROVED ? "Approved by validation agent" : "",
           ].filter(Boolean),
         };

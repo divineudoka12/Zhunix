@@ -381,10 +381,9 @@ export default function DatasetDetailPage() {
             </div>
           )}
 
-          <div className="grid grid-4" style={{ marginBottom: 16 }}>
+          <div className="grid grid-3" style={{ marginBottom: 16 }}>
             {[
               ['Total Sales', String(dataset.totalSales), 'var(--accent)'],
-              ['Revenue', formatWei(dataset.totalRevenue), 'var(--green)'],
               ['Quality Score', `${dataset.qualityScore || 0}/100`, 'var(--green)'],
               ['Status', dataset.status, 'var(--text-muted)'],
             ].map(([label, value, color]) => (

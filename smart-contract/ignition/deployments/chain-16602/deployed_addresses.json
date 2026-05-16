@@ -1,5 +1,7 @@
 {
   "AgentRegistryModule#AgentRegistry": "0xd0d990f448c3155c961b30AD3Ae215C6A14d3281",
   "DataRegistryModule#DataRegistry": "0xE71EEE7D42d6DE3Ed1B3B5b2685c78b452965757",
-  "DataMarketplaceModule#DataMarketplace": "0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3"
+  "DataMarketplaceModule#DataMarketplace": "0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3",
+  "DataRegistryV2Module#DataRegistry": "0x2d4752a3133Bd3301489d6c29745949b48F1AdA4",
+  "DataMarketplaceV2Module#DataMarketplace": "0xb4493191129a3Da623AD23605D0a0c1f64F586DF"
 }

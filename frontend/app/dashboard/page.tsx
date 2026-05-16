@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Award, Bot, DollarSign, ExternalLink, FileText, Package, TrendingUp, Wallet } from 'lucide-react';
+import { Award, ChevronLeft, ChevronRight, DollarSign, ExternalLink, FileText, Package, TrendingUp, Wallet } from 'lucide-react';
 import { Dataset, Purchase, contractActions, datasets, formatWei, purchases, truncateAddress } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Badge, PageFrame, StatCard, badgeColor, typeMeta } from '@/components/ui/kit';
@@ -16,6 +16,10 @@ export default function DashboardPage() {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
   const [withdrawTx, setWithdrawTx] = useState('');
   const [withdrawError, setWithdrawError] = useState('');
+  const [licensePage, setLicensePage] = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
+  const licensePageSize = 10;
+  const activityPageSize = 5;
 
   useEffect(() => {
     if (!isConnected || !address) return;
@@ -44,6 +48,55 @@ export default function DashboardPage() {
     const score = myDatasets.length ? Math.round(myDatasets.reduce((sum, item) => sum + (item.qualityScore || 0), 0) / myDatasets.length) : 0;
     return { sales, score };
   }, [myDatasets]);
+  const agentStats = useMemo(() => {
+    const approved = myDatasets.filter((item) => item.validationStatus === 'APPROVED').length;
+    const rejected = myDatasets.filter((item) => item.validationStatus === 'REJECTED').length;
+    const pending = myDatasets.filter((item) => item.validationStatus === 'PENDING').length;
+    const pricingEnabled = myDatasets.filter((item) => item.agentPricingEnabled).length;
+    return { approved, rejected, pending, pricingEnabled };
+  }, [myDatasets]);
+  const agentActivities = useMemo(() => myDatasets
+    .map((item) => {
+      const meta = typeMeta(item.dataType);
+      const statusText = item.validationStatus === 'APPROVED'
+        ? 'Validation agent approved this license for marketplace use'
+        : item.validationStatus === 'REJECTED'
+          ? 'Validation agent rejected this license'
+          : 'Validation agent is reviewing this license';
+      const pricingText = item.agentPricingEnabled
+        ? 'Pricing agent enabled'
+        : 'Pricing agent disabled';
+
+      return {
+        id: item._id,
+        href: `/dataset/${item.onChainId}`,
+        name: item.name || `License #${item.onChainId}`,
+        icon: meta.icon,
+        color: meta.color,
+        status: item.validationStatus,
+        score: item.qualityScore || 0,
+        updatedAt: item.validationTimestamp || item.updatedAt || item.createdAt,
+        summary: `${statusText}. ${pricingText}.`,
+      };
+    })
+    .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime()),
+    [myDatasets]
+  );
+  const licensePages = Math.max(1, Math.ceil(myDatasets.length / licensePageSize));
+  const activityPages = Math.max(1, Math.ceil(agentActivities.length / activityPageSize));
+  const paginatedDatasets = useMemo(
+    () => myDatasets.slice((licensePage - 1) * licensePageSize, licensePage * licensePageSize),
+    [licensePage, myDatasets]
+  );
+  const paginatedActivities = useMemo(
+    () => agentActivities.slice((activityPage - 1) * activityPageSize, activityPage * activityPageSize),
+    [activityPage, agentActivities]
+  );
+
+  useEffect(() => {
+    setLicensePage(1);
+    setActivityPage(1);
+  }, [myDatasets.length]);
 
   const withdraw = async () => {
     setWithdrawLoading(true);
@@ -97,7 +150,7 @@ export default function DashboardPage() {
           {myDatasets.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No licenses yet. Create your first data license to start earning.</p>
           ) : (
-            myDatasets.map((item) => {
+            paginatedDatasets.map((item) => {
               const meta = typeMeta(item.dataType);
               return (
                 <Link key={item._id} href={`/dataset/${item.onChainId}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
@@ -105,7 +158,7 @@ export default function DashboardPage() {
                     <span style={{ color: meta.color, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 800 }}>{meta.icon}</span>
                     <span style={{ minWidth: 0 }}>
                       <span style={{ color: 'var(--text)', display: 'block', fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 220 }}>{item.name}</span>
-                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 11 }}>{item.totalSales} sales / {formatWei(item.totalRevenue)}</span>
+                      <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 11 }}>{item.totalSales} sales</span>
                     </span>
                   </div>
                   <Badge color={badgeColor(item.validationStatus)}>{item.validationStatus}</Badge>
@@ -113,23 +166,78 @@ export default function DashboardPage() {
               );
             })
           )}
+          {myDatasets.length > licensePageSize && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingTop: 14 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                Page {licensePage} of {licensePages}
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="icon-button" aria-label="Previous licenses page" onClick={() => setLicensePage((page) => Math.max(1, page - 1))} disabled={licensePage === 1}>
+                  <ChevronLeft size={15} />
+                </button>
+                <button className="icon-button" aria-label="Next licenses page" onClick={() => setLicensePage((page) => Math.min(licensePages, page + 1))} disabled={licensePage === licensePages}>
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="card card-pad">
-          <h2 style={{ color: 'var(--text)', fontSize: 15, marginBottom: 16 }}>Agent Activity</h2>
-          {[
-            ['Quality validations', `${myDatasets.filter((item) => item.validationStatus !== 'PENDING').length} completed`, Award, 'var(--green)'],
-            ['Price cycles', 'Ready for approved licenses', TrendingUp, 'var(--accent)'],
-            ['Negotiations', 'Tracked by agent registry', Bot, 'var(--purple)'],
-          ].map(([title, sub, Icon, color]) => (
-            <div key={String(title)} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '11px 0', borderBottom: '1px solid var(--border)' }}>
-              {typeof Icon !== 'string' && <Icon size={16} color={String(color)} />}
-              <span>
-                <span style={{ display: 'block', color: 'var(--text)', fontSize: 12.5, fontWeight: 600 }}>{String(title)}</span>
-                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 11 }}>{String(sub)}</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            <h2 style={{ color: 'var(--text)', fontSize: 15 }}>Agent Activity</h2>
+            <Badge color={agentStats.pending ? 'amber' : 'green'}>{agentStats.pending} pending</Badge>
+          </div>
+
+          <div className="grid grid-4" style={{ gap: 8, marginBottom: 12 }}>
+            {[
+              ['Approved', agentStats.approved, 'var(--green)'],
+              ['Rejected', agentStats.rejected, 'var(--red)'],
+              ['Avg Score', totals.score || '-', 'var(--cyan)'],
+              ['Pricing', agentStats.pricingEnabled, 'var(--purple)'],
+            ].map(([label, value, color]) => (
+              <div key={String(label)} style={{ padding: 10, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: 10.5, marginBottom: 4 }}>{String(label)}</div>
+                <div style={{ color: String(color), fontSize: 16, fontWeight: 900 }}>{String(value)}</div>
+              </div>
+            ))}
+          </div>
+
+          {agentActivities.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No agent activity yet. Create a data license to start validation and pricing workflows.</p>
+          ) : (
+            paginatedActivities.map((activity) => (
+              <Link key={activity.id} href={activity.href} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '11px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ color: activity.color, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 800, width: 34, flexShrink: 0 }}>{activity.icon}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', marginBottom: 3 }}>
+                    <span style={{ color: 'var(--text)', fontSize: 12.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activity.name}</span>
+                    <Badge color={badgeColor(activity.status)}>{activity.status}</Badge>
+                  </span>
+                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 11.5, lineHeight: 1.45 }}>{activity.summary}</span>
+                  <span style={{ display: 'block', color: 'var(--text-faint)', fontSize: 11, marginTop: 4 }}>
+                    Quality score {activity.score}/100 / {new Date(activity.updatedAt).toLocaleDateString()}
+                  </span>
+                </span>
+              </Link>
+            ))
+          )}
+
+          {agentActivities.length > activityPageSize && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingTop: 14 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                Page {activityPage} of {activityPages}
               </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="icon-button" aria-label="Previous agent activity page" onClick={() => setActivityPage((page) => Math.max(1, page - 1))} disabled={activityPage === 1}>
+                  <ChevronLeft size={15} />
+                </button>
+                <button className="icon-button" aria-label="Next agent activity page" onClick={() => setActivityPage((page) => Math.min(activityPages, page + 1))} disabled={activityPage === activityPages}>
+                  <ChevronRight size={15} />
+                </button>
+              </div>
             </div>
-          ))}
+          )}
         </section>
       </div>
 

@@ -12,6 +12,7 @@ const MARKETPLACE_ABI = [
   'function purchaseAccess(uint256 datasetId) external payable',
   'function purchaseSubscription(uint256 datasetId) external payable',
   'function bulkPurchase(uint256[] datasetIds) external payable',
+  'function hasActiveAccess(address buyer,uint256 datasetId) view returns (bool)',
   'function withdraw() external',
 ];
 
@@ -391,9 +392,18 @@ async function getMarketplaceContract() {
   return new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, signer);
 }
 
+async function getContractBuyer(contract: Contract) {
+  const runner = contract.runner as { getAddress?: () => Promise<string> } | null;
+  return runner?.getAddress ? runner.getAddress() : null;
+}
+
 export const contractActions = {
   purchaseAccess: async (datasetId: number | string, pricePerAccess: string) => {
     const contract = await getMarketplaceContract();
+    const buyer = await getContractBuyer(contract);
+    if (buyer && await contract.hasActiveAccess(buyer, datasetId)) {
+      throw new Error('You already purchased this data license.');
+    }
     const tx = await contract.purchaseAccess(datasetId, { value: toPaymentValue(pricePerAccess) });
     const receipt = await tx.wait();
     return { txHash: receipt.hash as string };
@@ -405,7 +415,15 @@ export const contractActions = {
     return { txHash: receipt.hash as string };
   },
   bulkPurchase: async (items: Array<{ datasetId: number | string; pricePerAccess: string }>) => {
+    if (!items.length) throw new Error('There are no new data licenses to purchase.');
     const contract = await getMarketplaceContract();
+    const buyer = await getContractBuyer(contract);
+    if (buyer) {
+      const accessChecks = await Promise.all(items.map((item) => contract.hasActiveAccess(buyer, item.datasetId)));
+      if (accessChecks.some(Boolean)) {
+        throw new Error('Remove already purchased data licenses from the basket before paying.');
+      }
+    }
     const tx = await contract.bulkPurchase(
       items.map((item) => item.datasetId),
       { value: sumPaymentValues(items.map((item) => item.pricePerAccess)) }

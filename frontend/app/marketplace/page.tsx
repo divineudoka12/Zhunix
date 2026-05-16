@@ -2,15 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Bot, CheckCircle, Database, Filter, Loader2, Plus, Search, ShoppingCart, Sparkles, X } from 'lucide-react';
-import { Dataset, DataType, MarketplaceScoutResponse, UsagePermission, contractActions, datasets, formatWei, getExplorerTxUrl, truncateAddress } from '@/lib/api';
+import { Bot, CheckCircle, Database, Loader2, Plus, Search, ShoppingCart, Sparkles, X } from 'lucide-react';
+import { Dataset, DataType, MarketplaceScoutResponse, UsagePermission, contractActions, datasets, formatWei, getExplorerTxUrl, purchases, truncateAddress } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Badge, PageFrame, QualityBar, badgeColor, permissionLabel, typeMeta } from '@/components/ui/kit';
 
 const DATA_TYPES: Array<'All' | DataType> = ['All', 'TEXT', 'CODE', 'AUDIO', 'VIDEO', 'IMAGE', 'BEHAVIORAL', 'FINANCIAL', 'DOMAIN'];
 const PERMISSIONS: Array<'All' | UsagePermission> = ['All', 'AI_TRAINING', 'ANALYTICS', 'BOTH'];
 const MARKETPLACE_MIN_QUALITY_SCORE = 65;
 
-function DatasetCard({ ds }: { ds: Dataset }) {
+function priceTo0G(price: string) {
+  const parsed = Number(price || 0);
+  if (!Number.isFinite(parsed)) return 0;
+  return price.includes('.') || price.length < 13 ? parsed : parsed / 1e18;
+}
+
+function DatasetCard({ ds, isPurchased }: { ds: Dataset; isPurchased: boolean }) {
   const meta = typeMeta(ds.dataType);
   return (
     <Link href={`/dataset/${ds.onChainId}`} className="card card-pad" style={{ display: 'block', borderColor: ds.validationStatus === 'APPROVED' ? 'rgba(34,197,94,0.18)' : 'var(--border)' }}>
@@ -23,7 +30,9 @@ function DatasetCard({ ds }: { ds: Dataset }) {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <Badge color={badgeColor(ds.dataType)}>{meta.label}</Badge>
             <Badge color={badgeColor(ds.permission)}>{permissionLabel(ds.permission)}</Badge>
-            <Badge color={badgeColor(ds.validationStatus)}>{ds.validationStatus}</Badge>
+            <Badge color={isPurchased ? 'green' : badgeColor(ds.validationStatus)}>
+              {isPurchased ? 'PURCHASED' : ds.validationStatus}
+            </Badge>
           </div>
         </div>
       </div>
@@ -43,7 +52,7 @@ function DatasetCard({ ds }: { ds: Dataset }) {
         <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>
           {ds.totalSales ? (
             <>
-              {ds.totalSales} sales / <span style={{ color: 'var(--green)' }}>{formatWei(ds.totalRevenue)}</span>
+              {ds.totalSales} sales
             </>
           ) : (
             <span style={{ color: 'var(--text-faint)' }}>No sales yet</span>
@@ -62,9 +71,13 @@ function DatasetCard({ ds }: { ds: Dataset }) {
 function MarketplaceScout({
   open,
   onClose,
+  purchasedIds,
+  onPurchased,
 }: {
   open: boolean;
   onClose: () => void;
+  purchasedIds: Set<number>;
+  onPurchased: (datasetIds: number[]) => void;
 }) {
   const [prompt, setPrompt] = useState('');
   const [budget, setBudget] = useState('');
@@ -96,16 +109,18 @@ function MarketplaceScout({
   };
 
   const bulkPurchase = async () => {
-    if (!result?.results.length) return;
+    const purchasableResults = result?.results.filter(({ dataset }) => !purchasedIds.has(dataset.onChainId)) || [];
+    if (!purchasableResults.length) return;
     setBulkLoading(true);
     setBulkError('');
     setBulkTxHash('');
     try {
-      const res = await contractActions.bulkPurchase(result.results.map(({ dataset }) => ({
+      const res = await contractActions.bulkPurchase(purchasableResults.map(({ dataset }) => ({
         datasetId: dataset.onChainId,
         pricePerAccess: dataset.pricePerAccess,
       })));
       setBulkTxHash(res.txHash);
+      onPurchased(purchasableResults.map(({ dataset }) => dataset.onChainId));
     } catch (err) {
       setBulkError(err instanceof Error ? err.message : 'Bulk purchase failed.');
     } finally {
@@ -114,6 +129,9 @@ function MarketplaceScout({
   };
 
   if (!open) return null;
+  const purchasableResults = result?.results.filter(({ dataset }) => !purchasedIds.has(dataset.onChainId)) || [];
+  const purchasedResults = result?.results.filter(({ dataset }) => purchasedIds.has(dataset.onChainId)) || [];
+  const purchasableTotal = purchasableResults.reduce((sum, item) => sum + priceTo0G(item.dataset.pricePerAccess), 0);
 
   return (
     <div role="dialog" aria-modal="true" style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(3,6,12,0.78)', backdropFilter: 'blur(10px)', display: 'grid', placeItems: 'center', padding: 18 }}>
@@ -172,7 +190,7 @@ function MarketplaceScout({
                     Searching only: {result.interpretedIntent.dataTypes.map((item) => typeMeta(item).label).join(', ')}
                   </span>
                 ) : null}
-                <span className="mono" style={{ display: 'block', marginTop: 4 }}>Estimated one-time access total: {result.estimatedTotal} 0G</span>
+                <span className="mono" style={{ display: 'block', marginTop: 4 }}>Estimated new access total: {purchasableTotal.toFixed(4)} 0G</span>
               </span>
             </div>
 
@@ -195,16 +213,25 @@ function MarketplaceScout({
               </div>
             ) : (
               <>
-                <div className="card" style={{ padding: 14, marginBottom: 12, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div>
-                    <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 800 }}>Scout Basket</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 3 }}>{result.results.length} datasets / estimated {result.estimatedTotal} 0G</div>
+                {purchasableResults.length > 0 ? (
+                  <div className="card" style={{ padding: 14, marginBottom: 12, display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                      <div style={{ color: 'var(--text)', fontSize: 13, fontWeight: 800 }}>Scout Basket</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 3 }}>{purchasableResults.length} new datasets / estimated {purchasableTotal.toFixed(4)} 0G</div>
+                      {purchasedResults.length > 0 && (
+                        <div style={{ color: 'var(--green)', fontSize: 11.5, marginTop: 4 }}>{purchasedResults.length} already purchased excluded</div>
+                      )}
+                    </div>
+                    <button className="btn btn-primary" onClick={bulkPurchase} disabled={bulkLoading}>
+                      {bulkLoading ? <Loader2 size={15} className="spin" /> : <ShoppingCart size={15} />}
+                      {bulkLoading ? 'Confirming basket...' : 'Pay For New Matches'}
+                    </button>
                   </div>
-                  <button className="btn btn-primary" onClick={bulkPurchase} disabled={bulkLoading}>
-                    {bulkLoading ? <Loader2 size={15} className="spin" /> : <ShoppingCart size={15} />}
-                    {bulkLoading ? 'Confirming basket...' : 'Pay For All Matches'}
-                  </button>
-                </div>
+                ) : (
+                  <div className="alert alert-green" style={{ marginBottom: 12 }}>
+                    <CheckCircle size={15} /> All scout matches are already purchased.
+                  </div>
+                )}
                 {bulkTxHash && (
                   <a className="alert alert-green mono" href={getExplorerTxUrl(bulkTxHash)} target="_blank" rel="noreferrer" style={{ marginBottom: 12, textDecoration: 'none', wordBreak: 'break-all' }}>
                     Bulk purchase confirmed: {truncateAddress(bulkTxHash)}
@@ -219,6 +246,7 @@ function MarketplaceScout({
                           <Badge color="green">{dataset.qualityScore}/100 quality</Badge>
                           <Badge color="blue">{relevanceScore}/100 match</Badge>
                           <Badge color={badgeColor(dataset.dataType)}>{typeMeta(dataset.dataType).label}</Badge>
+                          {purchasedIds.has(dataset.onChainId) && <Badge color="green">PURCHASED</Badge>}
                         </div>
                         <Link href={`/dataset/${dataset.onChainId}`} style={{ color: 'var(--text)', fontWeight: 800, fontSize: 14 }}>{dataset.name}</Link>
                         <p style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.55, marginTop: 5 }}>{dataset.description.slice(0, 150)}{dataset.description.length > 150 ? '...' : ''}</p>
@@ -226,7 +254,9 @@ function MarketplaceScout({
                       </div>
                       <div style={{ display: 'grid', gap: 8, minWidth: 150 }}>
                         <div style={{ color: 'var(--green)', fontSize: 15, fontWeight: 900, textAlign: 'right' }}>{formatWei(dataset.pricePerAccess)}</div>
-                        <Link href={`/dataset/${dataset.onChainId}`} className="btn btn-secondary" style={{ minHeight: 34, padding: '0 12px' }}>Review Single</Link>
+                        <Link href={`/dataset/${dataset.onChainId}`} className="btn btn-secondary" style={{ minHeight: 34, padding: '0 12px' }}>
+                          {purchasedIds.has(dataset.onChainId) ? 'Open License' : 'Review Single'}
+                        </Link>
                       </div>
                     </div>
                   ))}
@@ -241,6 +271,7 @@ function MarketplaceScout({
 }
 
 export default function MarketplacePage() {
+  const { isConnected } = useAuth();
   const [items, setItems] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -248,6 +279,7 @@ export default function MarketplacePage() {
   const [permission, setPermission] = useState<'All' | UsagePermission>('All');
   const [total, setTotal] = useState(0);
   const [scoutOpen, setScoutOpen] = useState(false);
+  const [purchasedIds, setPurchasedIds] = useState<Set<number>>(new Set());
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -271,6 +303,22 @@ export default function MarketplacePage() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (!isConnected) {
+      setPurchasedIds(new Set());
+      return;
+    }
+    const loadPurchases = async () => {
+      try {
+        const res = await purchases.list();
+        setPurchasedIds(new Set((res.purchases || []).map((purchase) => purchase.datasetId)));
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    loadPurchases();
+  }, [isConnected]);
+
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return items;
@@ -279,7 +327,12 @@ export default function MarketplacePage() {
 
   return (
     <PageFrame title="Marketplace" subtitle="Browse verified data licenses for research, analytics, AI workflows, and business intelligence.">
-      <MarketplaceScout open={scoutOpen} onClose={() => setScoutOpen(false)} />
+      <MarketplaceScout
+        open={scoutOpen}
+        onClose={() => setScoutOpen(false)}
+        purchasedIds={purchasedIds}
+        onPurchased={(datasetIds) => setPurchasedIds((current) => new Set([...current, ...datasetIds]))}
+      />
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 9, padding: '0 14px', minHeight: 40 }}>
@@ -288,9 +341,6 @@ export default function MarketplacePage() {
         </div>
         <button className="btn btn-primary" onClick={() => setScoutOpen(true)} title={`Ask the marketplace scout to find approved ${MARKETPLACE_MIN_QUALITY_SCORE}+ score data`}>
           <Sparkles size={14} /> AI Scout
-        </button>
-        <button className="btn btn-secondary">
-          <Filter size={14} /> Filters
         </button>
       </div>
 
@@ -328,7 +378,7 @@ export default function MarketplacePage() {
         </div>
       ) : (
         <div className="grid grid-2">
-          {filtered.map((item) => <DatasetCard key={item._id} ds={item} />)}
+          {filtered.map((item) => <DatasetCard key={item._id} ds={item} isPurchased={purchasedIds.has(item.onChainId)} />)}
         </div>
       )}
     </PageFrame>

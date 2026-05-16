@@ -15,12 +15,11 @@ Zhunix does not pretend that every uploaded file is useful. It rejects low-value
 | Chain | 0G Galileo Testnet (chainId 16602) |
 | Frontend | `frontend/` — Next.js app |
 | Backend | `backend/` — Express API |
-| DataRegistry | `0xE71EEE7D42d6DE3Ed1B3B5b2685c78b452965757` |
-| DataMarketplace | `0xc214A73fAAd4Fa6a367582C3C9aFeFF806486Ba3` |
+| DataRegistry | `0x2d4752a3133Bd3301489d6c29745949b48F1AdA4` |
+| DataMarketplace | `0xb4493191129a3Da623AD23605D0a0c1f64F586DF` |
 | AgentRegistry | `0xd0d990f448c3155c961b30AD3Ae215C6A14d3281` |
-| Example upload tx | `0x...` |
-| Example purchase tx | `0x...` |
-| Example storage root | `0x...` |
+| Example purchase tx | `0xac1b73213f97411a04e6f9b114df779b7ff744a94252777e7e00684b4248b925` |
+| Example storage root | `112629` |
 
 Every dataset is anchored by a 0G Storage root hash and registered on-chain through DataRegistry. Every purchase is settled through DataMarketplace and exposed as a licensed access record.
 
